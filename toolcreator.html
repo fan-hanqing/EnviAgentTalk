@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tool Creator</title>
+<style>
+  :root{
+    --bg:#f6f6f4; --card:#fff; --line:#e2e0da; --ink:#22201c; --muted:#7a756c;
+    --acc:#2f6fb5; --acc-bg:#f0f6fd;
+    --warn:#b4590a; --warn-bg:#fff5e8;
+    --bad:#9a3232; --bad-bg:#fdf0f0;
+    --ok:#1e8a6e; --ok-bg:#eff9f5;
+    --mono:ui-monospace,"SF Mono",Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink); height:100vh; overflow:hidden;
+    display:flex; flex-direction:column;      /* so the columns measure the header, not a guess */
+    font:14px/1.6 -apple-system,"Segoe UI",system-ui,sans-serif;
+  }
+  h1{font-size:17px; margin:0; font-weight:650}
+  a{color:var(--ink)}
+  code{font-family:var(--mono); font-size:.92em}
+
+  .top{
+    display:flex; align-items:baseline; gap:14px; padding:12px 18px; flex:none;
+    border-bottom:1px solid var(--line); background:var(--card);
+  }
+  .top .sp{flex:1}
+  .top .sub{font-size:12.5px; color:var(--muted)}
+
+  .cols{display:grid; grid-template-columns:238px 1fr; flex:1 1 0; min-height:0}
+  .side{overflow-y:auto; padding:14px; border-right:1px solid var(--line)}
+  h2{
+    font-size:11.5px; letter-spacing:.08em; color:var(--muted);
+    margin:0 0 9px; font-weight:650; text-transform:uppercase;
+  }
+  h2:not(:first-child){margin-top:20px}
+
+  /* ── left ─────────────────────────────────── */
+  .tool{
+    display:flex; align-items:baseline; gap:7px; padding:6px 8px; border-radius:6px;
+    cursor:pointer; font-size:13px; font-family:var(--mono);
+  }
+  .tool:hover{background:#efeee9}
+  .tool .x{
+    opacity:0; border:none; background:none; color:var(--muted); cursor:pointer;
+    padding:0 2px; font-size:12px; line-height:1; margin-left:2px;
+  }
+  .tool:hover .x{opacity:1}
+  .tool .x:hover{color:var(--bad)}
+  .tool.on{background:var(--acc-bg); color:var(--acc); font-weight:600}
+  .tool .dot{width:8px; height:8px; border-radius:50%; flex:none; border:1.4px solid var(--muted)}
+  .tool .dot.ready{background:var(--ok); border-color:var(--ok)}
+  .tool .dot.draft{border-style:dashed; border-color:var(--warn)}
+  .tool.draft{font-style:italic}
+  .tool.draft .st{font-style:normal; color:var(--warn)}
+  .tool .dot.bad{border-color:var(--bad); background:var(--bad-bg)}
+  .tool .st{
+    margin-left:auto; font-size:10px; color:var(--muted); font-weight:400;
+    font-family:-apple-system,"Segoe UI",system-ui,sans-serif;
+  }
+
+  .att{
+    font-size:12px; padding:5px 7px; border:1px solid var(--line); border-radius:5px;
+    margin-bottom:5px; display:flex; gap:6px; align-items:baseline; background:var(--card);
+    font-family:var(--mono);
+  }
+  .att .sz{margin-left:auto; color:var(--muted); font-size:10.5px}
+  .att button{border:none; background:none; color:var(--muted); cursor:pointer; padding:0 2px}
+  .att button:hover{color:var(--bad)}
+  .note{font-size:11.5px; color:var(--muted); line-height:1.55; margin-top:6px}
+
+  /* ── right: the whole page is this one stream ── */
+  /* min-height:0 on both — without it the log grows past the viewport instead of scrolling,
+     because a flex item's default min-height is its content */
+  .main{display:flex; flex-direction:column; min-width:0; min-height:0; overflow:hidden}
+  .head{padding:13px 18px 0; flex:none}
+  .log{flex:1 1 0; min-height:0; overflow-y:auto; padding:14px 18px}
+  .bar{flex:none}
+  .inner{max-width:1000px}
+
+  .m{margin:0 0 11px; font-size:13.5px}
+  .m .body{white-space:pre-wrap; word-break:break-word}
+
+  .m.you{font-family:var(--mono); font-size:13px; color:var(--ink)}
+  .m.you .body{display:inline}
+  .m.you .car{color:var(--acc); font-weight:700; margin-right:7px}
+
+  .m.ai{border-left:3px solid var(--acc); padding:2px 0 2px 12px}
+  .m.ai .who{font-size:10.5px; font-weight:650; letter-spacing:.06em; color:var(--acc); margin-bottom:2px}
+
+  .m.act{border-left:2px dotted #b9b3a8; padding:1px 0 1px 12px; color:var(--muted); font-size:12.5px}
+  .m.act summary{cursor:pointer; font-family:var(--mono); font-size:12px}
+  .m.act summary::marker{color:#c2bcb0}
+
+  pre{
+    white-space:pre-wrap; word-break:break-word; margin:5px 0 0;
+    font:12px/1.55 var(--mono); background:#fbfaf8; border:1px solid var(--line);
+    border-radius:5px; padding:8px 10px;
+  }
+  /* only a collapsed agent action is capped; command output flows, as it would in a terminal */
+  .m.act pre{max-height:340px; overflow:auto}
+  pre.ok{border-color:#bfe0d2; background:var(--ok-bg)}
+  pre.bad{border-color:#e6c3c3; background:var(--bad-bg); color:var(--bad)}
+  pre.warn{border-color:#e3cfae; background:var(--warn-bg); color:#7a5117}
+  .m.out pre{margin-top:0}
+  .m.sys{color:var(--bad); font-family:var(--mono); font-size:12.5px}
+
+  kbd{
+    font-family:var(--mono); font-size:11.5px; background:#eeede8; border:1px solid var(--line);
+    border-radius:3px; padding:0 4px;
+  }
+
+  /* ── status + input ───────────────────────── */
+  .bar{
+    border-top:1px solid var(--line); background:var(--card); padding:8px 18px 11px;
+  }
+  .status{
+    font-family:var(--mono); font-size:11.5px; color:var(--muted);
+    display:flex; gap:5px; align-items:center; flex-wrap:wrap; margin-bottom:7px;
+  }
+  .status .nm{color:var(--ink); font-weight:700}
+  .status .f{padding:0 2px}
+  .status .f.y{color:var(--ok)}
+  .status .f.n{color:var(--bad)}
+  .status .f.w{color:var(--warn)}
+  .status .sep{color:#cdc8bd}
+  .status .sp{flex:1}
+
+  textarea,input,select{
+    width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:5px;
+    background:#fdfdfc; font:13px/1.55 var(--mono); color:var(--ink); resize:vertical;
+  }
+  textarea:focus,input:focus{outline:2px solid #c9d8ea; outline-offset:-1px}
+  button{
+    padding:6px 12px; border:1px solid var(--line); border-radius:5px; background:#fff;
+    font:inherit; font-size:12.5px; cursor:pointer; white-space:nowrap;
+  }
+  button:hover:not(:disabled){background:#f2f1ee}
+  button:disabled{opacity:.4; cursor:not-allowed}
+  button.primary{background:var(--ink); color:#fff; border-color:var(--ink)}
+  button.primary:hover:not(:disabled){background:#3a352e}
+  .row{display:flex; gap:8px; align-items:center; margin-top:7px}
+  .row .sp{flex:1}
+  .row .hint{font-size:11.5px; color:var(--muted)}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>Tool Creator</h1>
+  <span class="sub">making a method callable · <code>/</code> is you, <code>@</code> is the agent</span>
+  <span class="sp"></span>
+  <a href="/">← the roundtable</a>
+</div>
+
+<div class="cols">
+
+  <!-- ═══ LEFT ═══ -->
+  <div class="side">
+    <h2>Tools in <span id="tooldir">tools/</span></h2>
+    <div id="toollist"></div>
+    <div class="row" style="margin-top:8px">
+      <button id="btn-new" style="font-size:11.5px; padding:3px 9px">+ New</button>
+      <button id="btn-reload" title="re-read the folder" style="font-size:11.5px; padding:3px 9px">↻</button>
+    </div>
+    <div class="note">
+      Click one to load it. <span style="color:var(--ok)">●</span> means the tool is complete;
+      a hollow dot means something is still missing.
+    </div>
+
+    <h2>Reading material <span id="attcount" style="text-transform:none; letter-spacing:0"></span></h2>
+    <div id="attlist"></div>
+    <input type="file" id="attfile" multiple accept=".md,.txt,.py,.R,.r,.json,.csv,.tsv"
+           style="font-size:11.5px; padding:4px; font-family:inherit">
+    <div class="note">
+      Papers, replication code, derivations — what the agent should read to understand the method.
+      <b>Attach as many as you need</b>, in one pick or several; they accumulate. These go into the
+      conversation, not onto disk.
+    </div>
+
+    <h2>Runtime data</h2>
+    <div class="note">
+      Files the <em>script</em> opens while it runs — a coefficient table, a trained model. Put them
+      in the <code>tools/</code> folder yourself; the script runs with that folder as its working
+      directory, so a relative path just works.
+    </div>
+
+    <h2>Agent</h2>
+    <select id="seat" style="font-family:inherit; font-size:12.5px"></select>
+    <div class="note" id="seatnote"></div>
+    <div id="cfgbox" style="display:none">
+      <div class="note" style="margin-top:9px">base_url</div><input id="w-base">
+      <div class="note">model</div><input id="w-model">
+      <div class="note">api_key</div><input id="w-key" type="password">
+    </div>
+  </div>
+
+  <!-- ═══ RIGHT — everything else ═══ -->
+  <div class="main">
+    <div class="head"><h2>Assembly conversation</h2></div>
+    <div class="log" id="log"><div class="inner" id="inner"></div></div>
+
+    <div class="bar">
+      <div class="status" id="status"></div>
+      <textarea id="say" rows="3" placeholder="Say what you want made callable — or type a / command. /help lists them."></textarea>
+      <div class="row">
+        <button class="primary" id="btn-send">Send</button>
+        <button id="btn-stop" disabled>Stop</button>
+        <span class="hint"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> sends · <kbd>↑</kbd> recalls</span>
+        <span class="sp"></span>
+        <span class="hint" id="chatstate"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ══════════════════════════════════════════════════════════════
+   Everything happens in one stream. The draft is state, not a form:
+   you read it with /spec and /code, and change it by telling the
+   agent — or by pasting a @write_spec block yourself.
+   ══════════════════════════════════════════════════════════════ */
+const W = {
+  tools: [], name: null, seats: [],
+  spec: null, code: "",              // the draft
+  msgs: [], attach: [], hist: [], hi: 0,
+  busy: false, abort: null, sentFirst: false,
+  peers: "", peerMd: {},        // the other tools in tools/, as the agent sees them
+};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const J = o => JSON.stringify(o, null, 2);
+const MAX_AUTO = 5;                  // agent actions between two of your turns
+
+const BLANK = n => ({
+  name: n, title: "", description: "", runtime: "python",
+  parameters: [], returns: {}, conditions: "",
+  provenance: {class: "", citation: ""}, examples: [],
+});
+
+/* ══════════════════════════════════════════════
+   Output
+   ══════════════════════════════════════════════ */
+function render(){
+  $("inner").innerHTML = W.msgs.map(m => {
+    if(m.k === "you")
+      return `<div class="m you"><span class="car">›</span><span class="body">${esc(m.t)}</span></div>`;
+    if(m.k === "ai")
+      return `<div class="m ai"><div class="who">${esc(m.who)}</div><div class="body">${esc(m.t)}</div></div>`;
+    if(m.k === "act")
+      return `<div class="m act"><details${m.open ? " open" : ""}><summary>${esc(m.sum)}</summary>
+              <pre class="${m.cls || ""}">${esc(m.pre)}</pre></details></div>`;
+    if(m.k === "out")
+      return `<div class="m out">${m.sum ? `<div class="note" style="margin:0 0 3px">${esc(m.sum)}</div>` : ""}
+              <pre class="${m.cls || ""}">${esc(m.pre)}</pre></div>`;
+    if(m.k === "sys")  return `<div class="m sys">✗ ${esc(m.t)}</div>`;
+    if(m.k === "html") return `<div class="m">${m.t}</div>`;
+    return "";
+  }).join("");
+  $("log").scrollTop = $("log").scrollHeight;
+}
+const you  = t => { W.msgs.push({k:"you",  t}); render(); };
+const ai   = (who,t) => { W.msgs.push({k:"ai", who, t}); render(); };
+const act  = (sum,pre,cls,open) => { W.msgs.push({k:"act", sum, pre, cls, open}); render(); };
+const out  = (pre,cls,sum) => { W.msgs.push({k:"out", pre, cls, sum}); render(); };
+const bad  = t => { W.msgs.push({k:"sys", t}); render(); };
+const html = t => { W.msgs.push({k:"html", t}); render(); };
+
+/* ══════════════════════════════════════════════
+   Status line — the only thing left of the panel
+   ══════════════════════════════════════════════ */
+function status(){
+  const s = W.spec;
+  if(!W.name){
+    $("status").innerHTML = `<span style="color:var(--muted)">no draft — <b>/new &lt;name&gt;</b> or click a tool on the left</span>`;
+    return;
+  }
+  const f = (label, state) => `<span class="f ${state}">${state === "y" ? "✓" : state === "w" ? "‼" : "✗"} ${label}</span>`;
+  const parts = [
+    `<span class="nm">${esc(W.name)}</span>`,
+    `<span class="sep">·</span>`, f("spec", s && s.title ? "y" : "n"),
+    `<span class="sep">·</span>`, f("code", W.code ? "y" : "n"),
+    `<span class="sep">·</span>`, f("conditions", s && s.conditions ? "y" : "n"),
+    `<span class="sep">·</span>`, f("units", s && (s.parameters || []).length
+        && s.parameters.every(p => p.unit) ? "y" : "n"),
+    `<span class="sep">·</span>`, f("resolutions", s && (s.parameters || []).length
+        && s.parameters.every(p => p.resolution) ? "y" : "n"),
+    `<span class="sp"></span>`,
+    `<span style="color:var(--muted)">${esc((s && s.runtime) || "python")}</span>`,
+  ];
+  $("status").innerHTML = parts.join("");
+}
+
+/* ══════════════════════════════════════════════
+   Which agent
+   ══════════════════════════════════════════════ */
+/* Identity comes from the roundtable's own storage; the provider settings come from api.json,
+   bound to the same seat index. Slot 0 is the moderator's, so seat i uses slot i+1. */
+async function loadSeats(){
+  let o = {}, slots = [];
+  try{ o = JSON.parse(localStorage.getItem("estdialogue.cfg") || "{}"); }catch(e){}
+  try{ slots = (await (await fetch("/api/slots")).json()).slots || []; }catch(e){}
+  W.seats = (o.roster || []).map((sid, i) => {
+    const s = (o.sci || {})[sid] || {}, k = slots[i + 1] || {};
+    return {name: (s.name || sid).trim(), field: (s.field || "").trim(),
+            base: k.base_url || "", model: k.model || "", key: k.api_key || "",
+            dossier: s.dossier || ""};
+  }).filter(s => s.base && s.model);
+  $("seat").innerHTML = W.seats.map((s, i) => `<option value="${i}">${esc(s.name)}</option>`).join("")
+    + `<option value="-1">— set one manually —</option>`;
+  if(!W.seats.length) $("seat").value = "-1";
+  syncSeat();
+}
+function seat(){
+  const i = parseInt($("seat").value);
+  if(i >= 0 && W.seats[i]) return W.seats[i];
+  return {name: "assistant", field: "", dossier: "",
+          base: $("w-base").value.trim(), model: $("w-model").value.trim(), key: $("w-key").value.trim()};
+}
+function syncSeat(){
+  const manual = parseInt($("seat").value) < 0;
+  $("cfgbox").style.display = manual ? "block" : "none";
+  const s = seat();
+  if(!manual){ $("w-base").value = s.base; $("w-model").value = s.model; $("w-key").value = s.key; }
+  $("seatnote").textContent = manual ? "not from the roundtable"
+    : `${s.model || "no model"}${s.field ? " · " + s.field : ""}`;
+}
+$("seat").onchange = () => { syncSeat(); W.sentFirst = false; };
+
+/* ══════════════════════════════════════════════
+   Registry
+   ══════════════════════════════════════════════ */
+async function loadTools(){
+  const r = await fetch("/api/tools");
+  const d = await r.json();
+  W.tools = d.tools || [];
+  $("tooldir").textContent = (d.dir || "tools").split(/[\\/]/).slice(-1)[0] + "/";
+  const dot = st => st === "ready" ? "ready"
+                  : (st === "no spec" || st === "no script") ? "" : "bad";
+  // A draft is not on disk, so it is not in the listing — but the + button is right here, so
+  // it has to show up somewhere or pressing it looks like nothing happened.
+  const draft = W.name && !W.tools.some(t => t.name === W.name)
+    ? `<div class="tool draft on">
+         <span class="dot draft"></span>
+         <span style="flex:1">${esc(W.name)}</span>
+         <span class="st">draft</span>
+         <button class="x" data-discard="1" title="throw the draft away">✕</button></div>`
+    : "";
+  $("toollist").innerHTML = draft + (W.tools.length
+    ? W.tools.map(t => `<div class="tool ${t.name === W.name ? "on" : ""}">
+        <span class="dot ${dot(t.status)}" data-t="${esc(t.name)}"></span>
+        <span data-t="${esc(t.name)}" style="flex:1">${esc(t.name)}</span>
+        <span class="st" data-t="${esc(t.name)}">${esc(t.status)}</span>
+        <button class="x" data-del="${esc(t.name)}" title="delete this tool">✕</button></div>`).join("")
+    : (draft ? "" : `<div class="note" style="margin:0">nothing here yet</div>`));
+  $("toollist").querySelectorAll("[data-t]").forEach(el =>
+    el.addEventListener("click", () => cmdOpen(el.getAttribute("data-t"))));
+  $("toollist").querySelectorAll("[data-del]").forEach(el =>
+    el.addEventListener("click", e => { e.stopPropagation(); delTool(el.getAttribute("data-del")); }));
+  const dis = $("toollist").querySelector("[data-discard]");
+  if(dis) dis.addEventListener("click", e => { e.stopPropagation(); command("/discard"); });
+}
+
+/* The three files of a tool go together, so they go away together. */
+async function delTool(name){
+  if(W.busy) return;
+  if(!confirm(`Delete ${name} from tools/?\n\nIts script, specification and assembly log all go.`)) return;
+  const r = await fetch("/api/tools/" + encodeURIComponent(name), {method: "DELETE"});
+  const d = await r.json();
+  out((d.removed || []).map(f => "  tools/" + f).join("\n") || "(nothing removed)", "", "deleted");
+  if(W.name === name){ W.spec = null; W.code = ""; W.name = null; status(); }
+  loadTools();
+}
+$("btn-reload").onclick = loadTools;
+$("btn-new").onclick = () => {
+  const n = (prompt("Name for the new tool (letters, digits, _ )", "") || "").trim();
+  if(n) cmdNew(n);
+};
+
+/* ══════════════════════════════════════════════
+   Attachments
+   ══════════════════════════════════════════════ */
+$("attfile").addEventListener("change", async e => {
+  for(const f of e.target.files){
+    let text = await f.text(), tag = "";
+    if(/\.(csv|tsv)$/i.test(f.name)){                 // never push a whole table into context
+      const L = text.split(/\r?\n/);
+      if(L.length > 40){
+        tag = ` (header + 40 of ${L.length} rows)`;
+        text = L.slice(0, 40).join("\n") + `\n… ${L.length - 40} further rows not shown`;
+      }
+    }
+    W.attach.push({name: f.name + tag, text});
+    you(`(attached ${f.name}, ${(text.length / 1000).toFixed(1)}k chars)`);
+  }
+  e.target.value = ""; renderAtt(); W.sentFirst = false;
+});
+function renderAtt(){
+  const n = W.attach.length, kb = W.attach.reduce((a, x) => a + x.text.length, 0) / 1000;
+  $("attcount").textContent = n
+    ? `· ${n} file${n === 1 ? "" : "s"}, ${kb < 10 ? kb.toFixed(1) : kb.toFixed(0)}k` : "";
+  $("attlist").innerHTML = W.attach.map((a, i) =>
+    `<div class="att">${esc(a.name)}<span class="sz">${(a.text.length/1000).toFixed(1)}k</span>
+     <button data-i="${i}">✕</button></div>`).join("");
+  $("attlist").querySelectorAll("button").forEach(b =>
+    b.addEventListener("click", () => { W.attach.splice(+b.dataset.i, 1); renderAtt(); W.sentFirst = false; }));
+}
+
+/* ══════════════════════════════════════════════
+   Running the draft
+   ══════════════════════════════════════════════ */
+async function runDraft(args){
+  const r = await fetch("/api/tool", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    // "_draft_" keeps a test run from overwriting the accepted script of the same name
+    body: JSON.stringify({filename: "_draft_" + (W.name || "tool"), script: W.code,
+                          runtime: (W.spec && W.spec.runtime) || "python", args}),
+  });
+  return await r.json();
+}
+const runText = res => res.ok ? J(res.result ?? res.raw)
+  : `FAILED: ${res.error}${res.stderr ? "\n" + res.stderr : ""}`;
+
+/* Reproducing a published number rarely matches to the last bit, so report the worst
+   relative difference rather than pretending equality is binary. */
+function compare(got, want){
+  let worst = 0;
+  const walk = (g, w) => {
+    if(typeof w === "number"){
+      if(typeof g !== "number" || !isFinite(g)){ worst = Infinity; return; }
+      const d = Math.abs(g - w) / (Math.abs(w) || 1);
+      if(d > worst) worst = d;
+    }else if(w && typeof w === "object"){
+      for(const k of Object.keys(w)){
+        if(g == null || !(k in g)){ worst = Infinity; return; }
+        walk(g[k], w[k]);
+      }
+    }else if(JSON.stringify(g) !== JSON.stringify(w)) worst = Infinity;
+  };
+  walk(got, want); return worst;
+}
+
+/* ══════════════════════════════════════════════
+   Verbs — the same parser for the agent and for you
+   ══════════════════════════════════════════════ */
+function parseVerbs(text){
+  const acts = [];
+  const spec = text.match(/@write_spec\s*\n+```(?:json)?\s*\n([\s\S]*?)```/i);
+  if(spec) acts.push({v: "spec", raw: spec[1]});
+  const code = text.match(/@write_code\s*\n+```[a-zA-Z]*\s*\n([\s\S]*?)```/i);
+  if(code) acts.push({v: "code", raw: code[1]});
+  for(const m of text.matchAll(/^\s*@run\s*:\s*(\{[\s\S]*?\})\s*$/gm))
+    acts.push({v: "run", raw: m[1]});
+  for(const m of text.matchAll(/^\s*@peer\s*:\s*([A-Za-z0-9._-]+)\s*$/gm))
+    acts.push({v: "peer", raw: m[1]});
+  const prose = text
+    .replace(/@write_spec\s*\n+```(?:json)?\s*\n[\s\S]*?```/gi, "")
+    .replace(/@write_code\s*\n+```[a-zA-Z]*\s*\n[\s\S]*?```/gi, "")
+    .replace(/^\s*@run\s*:.*$/gm, "")
+    .replace(/^\s*@peer\s*:.*$/gm, "").trim();
+  return {acts, prose};
+}
+
+/* applies one verb; returns text to feed back to the model, or null */
+async function apply(a){
+  if(a.v === "spec"){
+    let obj;
+    try{ obj = JSON.parse(a.raw); }
+    catch(e){
+      act("✎ spec rejected — not valid JSON", a.raw.slice(0, 900), "bad", true);
+      return `That @write_spec block is not valid JSON (${e.message}). Send it again.`;
+    }
+    W.spec = Object.assign(W.spec || BLANK(W.name), obj);
+    W.spec.name = W.name || W.spec.name;
+    act("✎ wrote the spec", J(W.spec)); status();
+    if(!W.spec.conditions)
+      out("conditions is empty. A method without stated conditions is not a method; /accept will refuse.",
+          "warn", "tool creator");
+    return null;
+  }
+  if(a.v === "code"){
+    W.code = a.raw.trim();
+    act("✎ wrote the code", W.code); status();
+    return null;
+  }
+  if(a.v === "peer"){
+    const md = W.peerMd[a.raw];
+    if(md === undefined){
+      act(`⇄ no tool named ${a.raw} in tools/`, Object.keys(W.peerMd).join(", ") || "(none)", "bad", true);
+      return `There is no tool called ${a.raw}. The ones that exist are: ${Object.keys(W.peerMd).join(", ") || "none"}.`;
+    }
+    act(`⇄ read ${a.raw}.build.md`, md.slice(0, 1500) || "(empty)");
+    return `[${a.raw}.build.md]\n${md || "(this tool has no assembly log)"}`;
+  }
+  if(a.v === "run"){
+    if(!W.code){ bad("no code in the draft to run"); return "There is no code in the draft yet."; }
+    let args = {}; try{ args = JSON.parse(a.raw); }catch(e){}
+    $("chatstate").textContent = "running the draft…";
+    const res = await runDraft(args);
+    act(`▶ run ${a.raw}`, runText(res), res.ok ? "ok" : "bad", !res.ok);
+    return `[RUN RESULT]\n${runText(res)}\n\n` + (res.ok
+      ? "Is that what you expected? If yes, continue; if not, fix the code."
+      : "Fix the code and run it again.");
+  }
+  return null;
+}
+
+/* ══════════════════════════════════════════════
+   The model
+   ══════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════
+   What else is already in tools/.
+
+   A method is only callable by someone else if its interface lines up with theirs. So the
+   agent designing a tool has to see the tools it will have to compose with — not just their
+   names, but every argument's unit and resolution, and the conditions their authors wrote
+   down. That is where a mismatch is cheap to find. Once both tools exist and two agents are
+   arguing, it is expensive.
+
+   Specs go in whole (they are small and they are the interface). The assembly log is long,
+   so only its opening goes in; the agent pulls the rest with @peer when it wants it.
+   ══════════════════════════════════════════════ */
+const PEER_MD_HEAD = 1800;
+
+async function loadPeers(){
+  const names = W.tools.map(t => t.name).filter(n => n !== W.name);
+  const blocks = [];
+  W.peerMd = {};
+  for(const n of names){
+    try{
+      const d = await (await fetch("/api/tools/" + encodeURIComponent(n))).json();
+      if(d.error) continue;
+      W.peerMd[n] = d.build || "";
+      const head = (d.build || "").trim().slice(0, PEER_MD_HEAD);
+      blocks.push(`## ${n}\n`
+        + (d.spec ? "```json\n" + J(d.spec) + "\n```\n" : "(no specification)\n")
+        + (head ? `\nHow it was assembled (${n}.build.md`
+            + ((d.build || "").length > PEER_MD_HEAD ? `, first ${PEER_MD_HEAD} of ${d.build.length} chars`
+                                                     : "") + `):\n${head}\n` : ""));
+    }catch(e){}
+  }
+  W.peers = blocks.length ? `
+# Other instruments already in tools/
+These exist. If the method you are building is meant to compose with one of them, its
+specification below is the interface you have to meet — read the units and the resolution of
+every argument, not just the names. Where they do not line up, say so plainly: an argument that
+cannot be supplied at the resolution a method needs is a finding about the two methods, not a
+detail to paper over with a default.
+
+${blocks.join("\n")}
+For the full assembly log of any of these, reply with a line of the form:
+@peer: <name>
+` : "";
+}
+
+function sysPrompt(){
+  const s = seat();
+  const rt = (W.spec && W.spec.runtime) || "python";
+  return `You are ${s.name}${s.field ? `, a researcher working on ${s.field}` : ""}.
+${s.dossier ? `\nThis is the profile of your own published work:\n<<<PROFILE>>>\n${s.dossier}\n<<<END>>>\n` : ""}
+You are at a tool bench with that researcher. Together you are turning one of your methods into a
+**callable tool**: a small ${rt === "rscript" ? "R" : "Python"} script plus a written specification.
+
+# The execution contract
+The script reads ONE JSON object from stdin and writes ONE JSON object to stdout. Nothing else on
+stdout. It runs with the tools/ folder as its working directory, so data files are opened by
+relative path. Guard the domain: when an argument is outside the range where the method holds,
+exit non-zero with a message saying so — a tool that returns a confident wrong number is worse
+than one that refuses.
+
+# What you can do
+Prose and actions can appear in the same reply.
+
+@write_spec
+\`\`\`json
+{ "title": …, "description": …,
+  "parameters": [{"key": "energy_MWh", "type": "number", "unit": "MWh", "required": true,
+                  "resolution": "annual, plant-level", "description": …},
+                 {"key": "scc_usd", "type": "number", "unit": "USD/t", "required": false,
+                  "default": 117, "default_source": "the central case of the source paper",
+                  "resolution": "single global value"}],
+  "returns": {"total_usd": {"type":"number", "unit":"USD",
+                            "resolution": "period aggregate, western US interconnection"}},
+  "conditions": …,
+  "provenance": {"class":"published"|"model_drafted","citation":…},
+  "examples": [{"args":{…}, "result":{…}, "note":…}] }
+\`\`\`
+
+@write_code
+\`\`\`${rt === "rscript" ? "r" : "python"}
+…the whole script…
+\`\`\`
+
+@run: {"arg": value}
+   Runs the current draft and returns its real output to you. Use it. If it fails, read the error
+   and fix the code. You are expected to get this working before handing it back.
+
+@peer: <name>
+   Returns the full assembly log of another tool in tools/ — what its author was asked, what was
+   attached, what failed, what they signed. Use it when you need to know why an interface looks
+   the way it does before deciding whether yours can meet it.
+
+# What matters
+- **conditions** is the most important field. State where the method holds and where it stops. It
+  is shown to every agent that later uses this tool and travels with every result it returns.
+- **Every parameter needs a unit, and a resolution where that matters** (e.g. "balancing authority
+  × month", "plant-level annual"). Without that, two methods cannot be checked for whether they
+  actually compose.
+- **provenance**: "published" when the method comes from a specific piece of work — cite it.
+  "model_drafted" when you are assembling something with no published source. Do not dress the
+  second up as the first.
+- **examples**: the best example reproduces a number the source itself reports. If the tool cannot
+  reproduce a published value, the tool is wrong however good the prose is.
+- Ask before assuming. If you have not been told which part of the work should be callable, or what
+  a symbol means, ask rather than guess.
+- **A required parameter with no default is how you say "I need this and my source cannot give
+  it".** That sentence is the most useful thing this specification can contain, so do not erase
+  it with a plausible-looking default. A \`default\` is only allowed when you can fill in
+  \`default_source\` — where that specific value comes from. If you cannot, drop the default and
+  make the parameter required.
+- **Every returned value needs a unit and a resolution too.** A caller composes your output with
+  their input; if only one side declares its resolution, the mismatch that matters is invisible.
+- **Hunt the hard-coded constants.** Read the code for numbers written into it. Each one is either
+  a documented constant of the source — say so in \`conditions\` and cite it — or a hidden
+  assumption the caller can neither see nor vary. Lift the second kind into the parameter table.
+  A constant buried in a script is an assumption that no downstream check can ever reach.
+- Do not invent data. If a coefficient is needed and is not in the material you were given, make it
+  a required parameter with no default and say so.
+- Keep prose short. The researcher is reading a terminal, not a report.
+${W.peers}`;
+}
+
+function preamble(){
+  const files = W.attach.map(a => `### FILE: ${a.name}\n${a.text}`).join("\n\n");
+  return (files ? `The researcher has attached this material.\n\n${files}\n\n---\n\n` : "")
+    + `Draft "${W.name || "(unnamed)"}" as it currently stands:\n`
+    + `\`\`\`json\n${J(W.spec || BLANK(W.name))}\n\`\`\`\n`
+    + (W.code ? `\`\`\`\n${W.code}\n\`\`\`\n` : "(no code yet)\n") + `\n---\n\n`;
+}
+
+async function callModel(api){
+  const c = seat();
+  if(!c.base || !c.model) throw new Error("no base_url / model — pick an agent on the left, or set one manually");
+  W.abort = new AbortController();
+  try{
+    const r = await fetch("/api/chat", {
+      method: "POST", headers: {"Content-Type": "application/json"}, signal: W.abort.signal,
+      body: JSON.stringify({base_url: c.base, model: c.model, api_key: c.key,
+                            messages: api, temperature: 0.4, max_tokens: 3000}),
+    });
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error || ("HTTP " + r.status));
+    return d.content || "";
+  }finally{ W.abort = null; }
+}
+
+/* the model's view of the conversation, rebuilt each turn from the stream */
+function apiHistory(){
+  const api = [{role: "system", content: sysPrompt()}];
+  for(const m of W.msgs){
+    if(m.k === "you"   && m.api !== false) api.push({role: "user", content: m.api || m.t});
+    else if(m.k === "ai")   api.push({role: "assistant", content: m.raw || m.t});
+    else if(m.k === "feed") api.push({role: "user", content: m.t});
+  }
+  return api;
+}
+
+async function talk(text){
+  W.busy = true; $("btn-send").disabled = true; $("btn-stop").disabled = false;
+  $("chatstate").textContent = "reading tools/…";
+  await loadTools(); await loadPeers();     // another tab may have accepted a tool since
+  const first = !W.sentFirst;
+  W.msgs.push({k: "you", t: text, api: first ? preamble() + text : text});
+  W.sentFirst = true; render();
+  const api = apiHistory();
+  try{
+    for(let step = 0; step < MAX_AUTO; step++){
+      $("chatstate").textContent = "thinking…";
+      const reply = await callModel(api);
+      api.push({role: "assistant", content: reply});
+      const {acts, prose} = parseVerbs(reply);
+      if(prose){ W.msgs.push({k: "ai", who: seat().name, t: prose, raw: reply}); render(); }
+      let again = false;
+      for(const a of acts){
+        const feed = await apply(a);
+        if(feed){ api.push({role: "user", content: feed}); W.msgs.push({k: "feed", t: feed}); again = true; }
+      }
+      if(!again) break;                  // it is waiting for you again
+    }
+  }catch(e){
+    if(e.name !== "AbortError") bad(e.message);
+  }finally{
+    W.busy = false; $("btn-send").disabled = false; $("btn-stop").disabled = true;
+    $("chatstate").textContent = ""; render();
+  }
+}
+
+/* ══════════════════════════════════════════════
+   / commands
+   ══════════════════════════════════════════════ */
+const HELP = `
+<pre>/draft           print the spec and the code
+/run             run every example and report the relative error
+/run {"a": 1}    …or run one call with these arguments
+/accept          print what the tool declares, and write it into tools/
+/discard         throw the draft away
+
+Making and deleting tools is on the left: <b>+ New</b>, and the ✕ on a row.
+
+The agent acts with @write_spec, @write_code and @run: {…}. Paste one of those
+blocks yourself to edit the draft directly, without spending a model call.</pre>`;
+
+function cmdNew(name){
+  if(!name) return bad("/new needs a name, e.g. /new damage");
+  W.name = name.replace(/[^A-Za-z0-9._-]/g, "_");
+  W.spec = BLANK(W.name); W.code = ""; W.sentFirst = false;
+  out(`new draft "${W.name}" — it is at the top of the list on the left, marked "draft".\n`
+    + `Nothing reaches tools/ until you /accept.`, "", "tool creator");
+  status(); loadTools();
+}
+
+async function cmdOpen(name){
+  if(W.busy) return;
+  const r = await fetch("/api/tools/" + encodeURIComponent(name));
+  const d = await r.json();
+  if(d.error) return bad(d.error);
+  W.name = d.name;
+  W.spec = Object.assign(BLANK(d.name), d.spec || {});
+  W.spec.runtime = d.runtime || "python";
+  W.code = d.script || ""; W.sentFirst = false;
+  out(`loaded ${d.name} — ${(d.spec ? "spec" : "no spec")}, ${d.script ? d.script.split("\n").length + " lines of code" : "no code"}`,
+      "", "tool creator");
+  status(); loadTools();
+}
+
+async function cmdExamples(){
+  const ex = (W.spec && W.spec.examples) || [];
+  if(!ex.length) return bad('no examples in the spec — add one, or run a single call: /run {"x": 1}');
+  if(!W.code) return bad("no code in the draft");
+  const lines = []; let pass = 0;
+  for(const [i, e] of ex.entries()){
+    $("chatstate").textContent = `example ${i + 1}/${ex.length}…`;
+    const res = await runDraft(e.args || {});
+    const got = res.ok ? (res.result ?? res.raw) : null;
+    const d = (res.ok && e.result !== undefined) ? compare(got, e.result) : Infinity;
+    const okk = d <= 1e-9; if(okk) pass++;
+    lines.push(`example ${i + 1}${e.note ? " — " + e.note : ""}\n`
+      + `  args  ${JSON.stringify(e.args)}\n`
+      + `  got   ${res.ok ? JSON.stringify(got) : "FAILED: " + res.error}\n`
+      + (e.result !== undefined
+          ? `  want  ${JSON.stringify(e.result)}   ${okk ? "✓" : d === Infinity ? "✗" : "✗ off by " + (d * 100).toPrecision(2) + "%"}\n`
+          : ""));
+  }
+  $("chatstate").textContent = "";
+  out(lines.join("\n"), pass === ex.length ? "ok" : "bad", `${pass}/${ex.length} reproduced`);
+}
+
+/* What Accept refuses. Each of these exists because leaving it out does not break anything —
+   it quietly produces a tool that composes with someone else's and means nothing. */
+function missing(){
+  const s = W.spec, m = [], P = (s && s.parameters) || [], R = (s && s.returns) || {};
+  if(!W.name) m.push("the draft has no name");
+  if(!W.code || !W.code.trim()) m.push("there is no code");
+  if(!s || !s.conditions) m.push("conditions is empty — a method without stated conditions is not a method");
+  if(!s || !s.provenance || !s.provenance.class) m.push("provenance is not set (published / model_drafted)");
+
+  const noUnit = P.filter(p => !p.unit).map(p => p.key);
+  if(noUnit.length) m.push("no unit on: " + noUnit.join(", "));
+  const noRes = P.filter(p => !p.resolution).map(p => p.key);
+  if(noRes.length) m.push("no resolution on: " + noRes.join(", ")
+    + " — a unit alone makes two methods look composable when they are not");
+
+  // a default on a quantity the source cannot establish is how a gap gets papered over,
+  // silently and with no trace anywhere downstream
+  const badDefault = P.filter(p => p.default !== undefined && !String(p.default_source || "").trim())
+                      .map(p => p.key);
+  if(badDefault.length) m.push("default with no default_source on: " + badDefault.join(", ")
+    + " — say where the default came from, or drop it and make the parameter required");
+
+  const rNoUnit = Object.entries(R).filter(([, v]) => !v || !v.unit).map(([k]) => k);
+  if(rNoUnit.length) m.push("no unit on returned value: " + rNoUnit.join(", "));
+  const rNoRes = Object.entries(R).filter(([, v]) => !v || !v.resolution).map(([k]) => k);
+  if(rNoRes.length) m.push("no resolution on returned value: " + rNoRes.join(", ")
+    + " — this is the half a caller has to match against their own parameters");
+  if(!Object.keys(R).length) m.push("returns is empty");
+  return m;
+}
+
+/* Judgements, not facts — so these warn and do not block. */
+function lint(){
+  const s = W.spec, w = [];
+  const c = String((s && s.conditions) || "");
+  if(!/\b(not|outside|only|beyond|cannot|invalid|fails?)\b/i.test(c))
+    w.push("conditions names no boundary — where does this method stop being valid?");
+  if(!((s && s.examples) || []).length)
+    w.push("no example — the caller has nothing to check the tool against");
+  else if(!(s.examples || []).some(e => /reproduc|table|figure|report|paper|§/i.test(e.note || "")))
+    w.push("no example reproduces a number the source itself reports");
+  const nums = (W.code.match(/(?<![\w.])\d+\.\d+(?![\w.])/g) || [])
+    .filter(n => !["0.0","1.0","2.0","100.0"].includes(n));
+  if(nums.length) w.push(`hard-coded constants in the code (${[...new Set(nums)].slice(0,6).join(", ")})`
+    + " — each is either a documented constant of the source or a hidden assumption a caller cannot vary");
+  return w;
+}
+
+/* What the tool declares about itself, spelled out. Printed by the command that writes it, so
+   it lands in the session record rather than being an optional preview nobody reads. */
+function reviewText(){
+  const s = W.spec;
+  const par = (s.parameters || []).map(p =>
+    `  ${p.key}${p.unit ? "  [" + p.unit + "]" : ""}${p.required === false ? "  (optional)" : ""}`
+    + (p.resolution ? `\n      resolution: ${p.resolution}` : "")
+    + (p.default !== undefined ? `\n      default ${p.default} — ${p.default_source || "source not stated"}` : "")).join("\n");
+  const ret = Object.entries(s.returns || {}).map(([k, v]) =>
+    `  ${k}${v.unit ? "  [" + v.unit + "]" : ""}${v.resolution ? `\n      resolution: ${v.resolution}` : ""}`).join("\n");
+  const w = lint();
+  return `  ${(W.name + (s.runtime === "rscript" ? ".R" : ".py")).padEnd(24)}${W.code.split("\n").length} lines
+  ${(W.name + ".json").padEnd(24)}the specification below
+  ${(W.name + ".build.md").padEnd(24)}this whole session
+
+PARAMETERS
+${par || "  (none)"}
+
+RETURNS
+${ret || "  (none)"}
+
+CONDITIONS
+${s.conditions.split("\n").map(l => "  " + l).join("\n")}
+
+PROVENANCE
+  ${s.provenance.class}${s.provenance.citation ? " — " + s.provenance.citation : ""}
+${w.length ? "\nWORTH A LOOK (these do not block)\n" + w.map(x => "  ⚠ " + x).join("\n") + "\n" : ""}`;
+}
+
+async function cmdAccept(){
+  const m = missing();
+  if(m.length) return out(m.map(x => "✗ " + x).join("\n"), "bad", "cannot accept");
+  const s = W.spec;
+  const r = await fetch("/api/tools/" + encodeURIComponent(W.name), {
+    method: "PUT", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({script: W.code, spec: s, build: buildLog(), runtime: s.runtime}),
+  });
+  const d = await r.json();
+  if(!d.ok) return bad("save failed: " + (d.error || "unknown"));
+  out(reviewText() + `\nWRITTEN\n` + d.written.map(f => "  tools/" + f).join("\n"),
+    "ok", `${W.name} is on disk`);
+  status(); loadTools();
+}
+
+function buildLog(){
+  const L = [`# Assembly log — ${W.name}`, "",
+    `- Date: ${new Date().toISOString().slice(0, 19).replace("T", " ")}`,
+    `- Assembled with: ${seat().name} · ${seat().model}`,
+    ""];
+  if(W.attach.length){
+    L.push("## Material the agent read", "");
+    for(const a of W.attach) L.push(`- ${a.name} (${(a.text.length / 1000).toFixed(1)}k chars)`);
+    L.push("");
+  }
+  L.push("## Session", "");
+  for(const m of W.msgs){
+    if(m.k === "you")      L.push("```", "› " + m.t, "```", "");
+    else if(m.k === "ai")  L.push(`**${m.who}** — ${m.t}`, "");
+    else if(m.k === "act") L.push(`> ${m.sum}`, "", "```", m.pre, "```", "");
+    else if(m.k === "out") L.push("```", (m.sum ? m.sum + "\n" : "") + m.pre, "```", "");
+  }
+  L.push("---", "", "## Final specification", "", "```json", J(W.spec), "```", "",
+         "## Final code", "", "```", W.code, "```", "");
+  return L.join("\n");
+}
+
+async function command(line){
+  const [c, ...rest] = line.trim().split(/\s+/);
+  const arg = line.trim().slice(c.length).trim();
+  switch(c){
+    case "/help":  html(HELP); return;
+    case "/new":   cmdNew(arg); return;
+    case "/open":  await cmdOpen(arg); return;
+    case "/tools":
+      await loadTools();
+      out(W.tools.length ? W.tools.map(t =>
+            `  ${t.name.padEnd(18)}${t.status.padEnd(20)}${t.title || ""}`).join("\n")
+          : "  (empty)", "", "tools/");
+      return;
+    case "/draft":
+      if(!W.spec && !W.code) return bad("no draft — /new <name>, or click a tool on the left");
+      if(W.spec) out(J(W.spec), "", "spec");
+      if(W.code) out(W.code, "", (W.spec && W.spec.runtime) === "rscript" ? "code (R)" : "code");
+      return;
+    case "/spec":                       // kept as an alias, not listed in /help
+      if(!W.spec) return bad("no draft — /new <name>, or click a tool on the left");
+      out(J(W.spec)); return;
+    case "/code":
+      if(!W.code) return bad("no code in the draft");
+      out(W.code); return;
+    case "/run": {
+      if(!W.code) return bad("no code in the draft");
+      if(!arg) return cmdExamples();     // bare /run means "run the tests"
+      let args;
+      try{ args = JSON.parse(arg); }catch(e){ return bad('/run takes a JSON object: /run {"x": 1}'); }
+      $("chatstate").textContent = "running…";
+      const res = await runDraft(args);
+      $("chatstate").textContent = "";
+      out(runText(res), res.ok ? "ok" : "bad", `run ${JSON.stringify(args)}`);
+      return;
+    }
+    case "/examples": await cmdExamples(); return;
+    case "/peer": {                     // unlisted: print another tool's assembly log
+      await loadTools(); await loadPeers();
+      if(!arg) return out(Object.keys(W.peerMd).join("\n") || "(no other tools)", "", "other tools");
+      const md = W.peerMd[arg];
+      if(md === undefined) return bad(`no tool named ${arg}`);
+      out(md || "(no assembly log)", "", arg + ".build.md");
+      return;
+    }
+    case "/accept":   await cmdAccept(); return;
+    case "/discard":
+      if(W.name && W.tools.some(t => t.name === W.name)) await cmdOpen(W.name);
+      else { W.spec = null; W.code = ""; W.name = null;
+             out("draft discarded", "", "tool creator"); status(); loadTools(); }
+      return;
+    case "/clear": W.msgs = []; W.sentFirst = false; render(); return;
+    default: bad(`unknown command ${c} — /help lists them`);
+  }
+}
+
+/* ══════════════════════════════════════════════
+   Input
+   ══════════════════════════════════════════════ */
+async function submit(){
+  const text = $("say").value.trim();
+  if(!text || W.busy) return;
+  $("say").value = "";
+  W.hist.push(text); W.hi = W.hist.length;
+
+  if(text.startsWith("/")){ you(text); await command(text); return; }
+
+  // a message that starts with a verb edits the draft directly — no model call
+  if(/^\s*@write_(spec|code)\b/.test(text)){
+    you(text.split("\n")[0] + " …");
+    if(!W.name) return bad("no draft — /new <name> first");
+    const {acts} = parseVerbs(text);
+    if(!acts.length) return bad("could not find a fenced block after the verb");
+    for(const a of acts) await apply(a);
+    W.sentFirst = false;                 // the agent must be re-shown the draft
+    return;
+  }
+  if(/^\s*@run\s*:/.test(text)){ you(text); const {acts} = parseVerbs(text);
+    for(const a of acts) await apply(a); return; }
+
+  await talk(text);
+}
+
+$("btn-send").onclick = submit;
+$("btn-stop").onclick = () => { if(W.abort) W.abort.abort(); };
+$("say").addEventListener("keydown", e => {
+  if(e.key === "Enter" && (e.metaKey || e.ctrlKey)){ e.preventDefault(); submit(); return; }
+  if(e.key === "ArrowUp" && !e.shiftKey && $("say").selectionStart === 0 && W.hi > 0){
+    e.preventDefault(); $("say").value = W.hist[--W.hi] || "";
+  }
+  if(e.key === "ArrowDown" && !e.shiftKey && W.hi < W.hist.length - 1){
+    e.preventDefault(); $("say").value = W.hist[++W.hi] || "";
+  }
+});
+
+/* ══════════════════════════════════════════════
+   Start
+   ══════════════════════════════════════════════ */
+loadSeats(); status();
+html(`<div class="note" style="margin:0 0 10px">
+  A tool is a script <em>and</em> a spec. Attach what the agent should read, say what you want made
+  callable, and it will write both — it can run its own draft with <code>@run</code> and fix what
+  breaks. Nothing reaches <code>tools/</code> until you <code>/accept</code>.</div>`);
+html(HELP);
+loadTools().then(() => {
+  const q = new URLSearchParams(location.search).get("tool");
+  if(q) cmdOpen(q);
+});
+</script>
+</body>
+</html>

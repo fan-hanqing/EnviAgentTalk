@@ -1,0 +1,2415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Environmental Agent Roundtable</title>
+<style>
+  :root{
+    --bg:#f6f6f4; --card:#fff; --line:#e2e0da; --ink:#22201c; --muted:#7a756c;
+    --mod:#b4590a; --mod-bg:#fff5e8;
+    --sys:#9a3232;
+  }
+  .c1{--ac:#2f6fb5; --acbg:#f0f6fd}
+  .c2{--ac:#1e8a6e; --acbg:#eff9f5}
+  .c3{--ac:#7a4fb5; --acbg:#f5f1fc}
+  .c4{--ac:#1f7a94; --acbg:#eef8fb}
+  .c5{--ac:#a8443a; --acbg:#fdf1ef}
+  .c6{--ac:#6b7a1f; --acbg:#f6f8ea}
+  .c7{--ac:#a03b78; --acbg:#fdf0f8}
+  .c8{--ac:#41598f; --acbg:#f1f3fa}
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.65 -apple-system,"Segoe UI",system-ui,sans-serif;
+  }
+  .wrap{max-width:1320px; margin:0 auto; padding:18px 20px 210px}
+  h1{font-size:19px; margin:0 0 4px; font-weight:650}
+  .sub{color:var(--muted); font-size:13px; margin-bottom:14px}
+  .sub a{color:var(--ink); text-decoration:underline; text-underline-offset:2px; margin-left:6px}
+  .sub a:hover{color:var(--mod)}
+
+  /* README overlay */
+  .ov{
+    display:none; position:fixed; inset:0; z-index:50;
+    background:rgba(34,32,28,.45); padding:32px 20px;
+  }
+  .ov.on{display:block}
+  .ov .sheet{
+    max-width:900px; margin:0 auto; background:var(--card); border-radius:12px;
+    height:100%; display:flex; flex-direction:column; box-shadow:0 12px 40px rgba(0,0,0,.25);
+  }
+  .ov .top{
+    display:flex; align-items:center; gap:10px; padding:12px 18px;
+    border-bottom:1px solid var(--line);
+  }
+  .ov .top b{font-size:14px}
+  .ov .top .sp{flex:1}
+  .ov .helpsub{font-size:12px; color:var(--muted)}
+  .helplog{flex:1 1 0; min-height:0; overflow-y:auto; padding:16px 22px}
+  .helplog .hm{margin:0 0 13px; font-size:13.5px; line-height:1.65; white-space:pre-wrap;
+               word-break:break-word}
+  .helplog .hm.you{font-family:ui-monospace,Consolas,monospace; font-size:13px}
+  .helplog .hm.you b{color:var(--acc); margin-right:7px}
+  .helplog .hm.ai{border-left:3px solid var(--acc); padding-left:12px}
+  .helplog .hm.sys{color:#9a3232; font-size:12.5px}
+  .helplog .hm.thinking{color:var(--muted); font-style:italic}
+  .helplog .intro{color:var(--muted); font-size:13px; line-height:1.7}
+  .helplog .intro a{color:var(--acc)}
+  .helplog .gate{font-size:14px; padding:26px 0; text-align:center}
+  .helplog .gate a{color:var(--acc); font-weight:650}
+  .helpbar{border-top:1px solid var(--line); padding:11px 18px 13px}
+  .helprow{display:flex; gap:8px; align-items:center; margin-top:8px}
+  .helprow:first-child{margin-top:0}
+  .helprow .grow{flex:1}
+  .helpnote{font-size:11.5px; color:var(--muted)}
+  .cols{display:grid; grid-template-columns:minmax(430px,1.05fr) minmax(360px,1fr); gap:18px; align-items:start}
+
+  /* ── the roundtable ─────────────────────────── */
+  .table{
+    background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:6px 6px 2px; position:relative;
+  }
+  /* Setting up the API is the same kind of act as clicking a seat or pressing + — it belongs on
+     the diagram, not up in the page chrome with the documentation links. Pinned to the panel
+     rather than drawn into the SVG, because the viewBox crops to content and would move it. */
+  .setapi{
+    position:absolute; top:10px; left:10px; z-index:2;
+    font-size:12px; padding:3px 10px; border:1px solid var(--line); border-radius:6px;
+    background:#fff; color:var(--ink); text-decoration:none; white-space:nowrap;
+  }
+  .setapi:hover{background:#f2f1ee}
+  .table svg{display:block; width:100%; height:auto}
+  .seatbox{cursor:pointer}
+  .seatbox rect{fill:#fff; stroke-width:1.4}
+  .seatbox:hover rect{fill:#fbfbfa}
+  .seatbox.sel rect{stroke-width:2.6}
+  .seatname{font:600 11px -apple-system,"Segoe UI",system-ui,sans-serif}
+  .seatsub{font:9px -apple-system,"Segoe UI",system-ui,sans-serif; fill:#7a756c}
+  .ringline{stroke:#d6d3cb; stroke-width:1.2; fill:none}
+  .hub{fill:#fdfcfa; stroke:#c9c5bb; stroke-width:1.4}
+  .hublabel{font:8px -apple-system,system-ui,sans-serif; fill:#a09a90; letter-spacing:.08em}
+  .hubtext{font:10px -apple-system,"Segoe UI",system-ui,sans-serif; fill:#22201c}
+  .modbox rect{fill:var(--mod-bg); stroke:var(--mod); stroke-width:1.4}
+  .modbox:hover rect{fill:#ffedd6}
+  .modbox text{font:600 10.5px -apple-system,system-ui,sans-serif; fill:var(--mod)}
+  .addnode{cursor:pointer}
+  .addnode circle{fill:#fff; stroke:#b9b5ab; stroke-width:1.2; stroke-dasharray:3 2.6}
+  .addnode text{font:600 15px -apple-system,system-ui,sans-serif; fill:#8d887e}
+  .addnode:hover circle{stroke:var(--ink)} .addnode:hover text{fill:var(--ink)}
+  .addnode.off{opacity:.28; pointer-events:none}
+  .dot{stroke-width:1.2}
+
+  .ringhint{
+    font-size:14.5px; color:var(--ink); padding:9px 4px 5px; text-align:center;
+  }
+  .ringhint b{font-weight:650}
+  .ringhint .lock{color:var(--mod)}
+
+  /* ── the selected seat's panel ──────────────── */
+  .panels{margin-top:14px}
+  .card{
+    display:none; background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:14px; border-top:3px solid var(--ac);
+  }
+  .card.on{display:block}
+  .card h2{
+    font-size:13px; margin:0 0 12px; letter-spacing:.06em; font-weight:600;
+    color:var(--ac); display:flex; align-items:center; gap:8px;
+  }
+  .card h2 .x{
+    margin-left:auto; border:none; background:none; color:var(--muted);
+    font-size:16px; line-height:1; padding:0 4px; cursor:pointer;
+  }
+  .card h2 .x:hover:not(:disabled){color:var(--sys); background:none}
+  .card h2 .x:disabled{opacity:.25; cursor:not-allowed}
+  label{display:block; font-size:12px; color:var(--muted); margin:9px 0 3px}
+  input,textarea,select{
+    width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:6px;
+    background:#fdfdfc; font:inherit; font-size:13px; color:var(--ink);
+  }
+  input:focus,textarea:focus{outline:2px solid #c9d8ea; outline-offset:-1px}
+  textarea{resize:vertical; font-family:ui-monospace,Consolas,monospace; font-size:12px; line-height:1.5}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+  .filerow{display:flex; align-items:center; gap:8px; margin-top:6px}
+  .filerow input[type=file]{font-size:12px; padding:3px; border:none; background:none}
+  .count{font-size:11px; color:var(--muted); white-space:nowrap; margin-left:auto}
+
+  .kb{margin-top:10px; border-top:1px dashed var(--line); padding-top:9px}
+  .opt{font-weight:400; color:var(--muted); font-size:11px; letter-spacing:0}
+  .st{float:right; font-size:11px; color:var(--muted); font-weight:400}
+  .st.on{color:#1e8a6e}
+  .hintline{font-size:11.5px; color:var(--muted); margin:6px 0 5px; line-height:1.5}
+
+  details > input[type=file]{font-size:12px; padding:3px 0; border:none; background:none}
+  details > select{font-size:12.5px}
+  .kbline{display:flex; align-items:center; gap:8px}
+  .kbstate{font-size:12px; color:var(--muted)}
+  .kbstate.ok{color:#1e8a6e} .kbstate.warn{color:var(--mod)}
+  details{margin-top:8px} summary{font-size:12px; color:var(--muted); cursor:pointer}
+  details textarea{margin-top:6px}
+
+  /* ── 2. Transcript ────────────────────────── */
+  .transcript{
+    background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:16px; position:sticky; top:18px;
+    height:calc(100vh - 250px); min-height:340px; overflow-y:auto;
+  }
+  /* one step per line, the block centred but the lines flush left so the arrows stack */
+  .empty{color:var(--muted); padding:60px 22px}
+  .empty .steps{max-width:29em; margin:0 auto; text-align:left}
+  .empty .steps div{font-size:15px; line-height:2.1}
+  .empty b{color:var(--ink); font-weight:650}
+  .empty .aside{font-size:13px}
+  .msg{margin:0 0 14px; padding:10px 14px; border-left:3px solid; border-radius:0 8px 8px 0}
+  .msg .who{font-size:12px; font-weight:650; margin-bottom:4px; display:flex; gap:8px; align-items:baseline}
+  .msg .who .t{font-weight:400; color:var(--muted); font-size:11px}
+  .msg .body{white-space:pre-wrap; word-break:break-word}
+  .msg.s{border-color:var(--ac); background:var(--acbg)}
+  .msg.s .who{color:var(--ac)}
+  .msg.M{
+    border:2px solid var(--mod); background:var(--mod-bg); border-radius:8px;
+    box-shadow:0 1px 6px rgba(180,89,10,.14); padding:12px 16px;
+  }
+  .msg.M .who{color:var(--mod); font-size:13px; letter-spacing:.04em}
+  .msg.M .body{font-weight:500}
+  .msg.S{border-color:var(--sys); background:#fdf0f0; color:var(--sys); font-size:13px}
+  .msg.S .who{color:var(--sys)}
+  .msg.I{border-color:var(--line); background:#faf9f7; color:var(--muted); font-size:13px}
+  .msg.I .who{color:var(--muted)}
+  .msg.Q{
+    border-left:2px dotted var(--muted); background:transparent; color:var(--muted);
+    font-size:12.5px; padding:2px 12px; margin-bottom:10px;
+  }
+  .msg.Q .who{display:none}
+  .msg.Q summary{font-size:12.5px}
+  .msg.Q.tool{border-left-color:#2f4fa8; color:#41507d}
+  .msg.Q pre{
+    white-space:pre-wrap; font-size:11.5px; line-height:1.5; background:#faf9f7;
+    border:1px solid var(--line); border-radius:6px; padding:8px; margin:6px 0 0; max-height:260px; overflow:auto;
+  }
+  .tag{
+    display:inline-block; font-size:10.5px; padding:0 5px; border-radius:4px; font-weight:600;
+    border:1px solid currentColor; margin-right:3px; vertical-align:1px; letter-spacing:.03em;
+  }
+  .tag.base{color:#2c6e49; background:#e8f4ee}
+  .tag.ext{color:#8a5a00; background:#fbf1de}
+  .tag.comp{color:#2f4fa8; background:#eaeefb}
+  .tag.assm{color:#8f3a6b; background:#f9ecf4}
+  .whypre{background:#f9ecf4 !important; border-color:#e6c9db !important; color:#7a3159}
+  .tag .rid{opacity:.72; font-weight:500}
+  .flags{
+    margin-top:6px; font-size:11px; line-height:1.5; color:#9a3232;
+    background:#fdf0f0; border:1px solid #e6c3c3; border-radius:5px; padding:5px 8px;
+  }
+  .flags b{font-weight:650}
+  .thinking{color:var(--muted); font-style:italic}
+
+  /* ── 3. Control bar ───────────────────────── */
+  .bar{
+    position:fixed; left:0; right:0; bottom:0; background:rgba(255,255,255,.97);
+    border-top:1px solid var(--line); padding:10px 20px 12px; backdrop-filter:blur(6px);
+  }
+  .bar .inner{max-width:1060px; margin:0 auto; display:flex; flex-direction:column; gap:8px}
+  .line{display:flex; gap:8px; align-items:center}
+  .summaryline{align-items:stretch}
+  .summaryline .sumwhy{margin-bottom:5px}
+  .summaryline .sumwhy summary{
+    font-size:11.5px; color:var(--muted); cursor:pointer; list-style-position:outside;
+  }
+  .summaryline .sumwhy div{font-size:11.5px; color:var(--muted); line-height:1.5; margin:4px 0 0}
+  .summaryline textarea{
+    width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:6px;
+    background:#fdfdfc; font:13px/1.55 inherit; color:var(--ink); resize:vertical;
+  }
+  .line .grow{flex:1}
+  button{
+    padding:7px 14px; border:1px solid var(--line); border-radius:6px; background:#fff;
+    font:inherit; font-size:13px; cursor:pointer; white-space:nowrap;
+  }
+  button:hover:not(:disabled){background:#f2f1ee}
+  button:disabled{opacity:.4; cursor:not-allowed}
+  button.primary{background:var(--ink); color:#fff; border-color:var(--ink)}
+  button.primary:hover:not(:disabled){background:#3a352e}
+  button.mod{background:var(--mod); color:#fff; border-color:var(--mod)}
+  button.on{background:#eeede8; border-color:#cfcabf}
+  button.mod:hover:not(:disabled){background:#c96a15}
+  button.sm{padding:4px 10px; font-size:12px}
+  .status{font-size:12px; color:var(--muted); white-space:nowrap}
+  .status b{color:var(--ink); font-weight:600}
+  .modline{padding:8px; border-radius:8px; border:1px dashed transparent}
+  .modline.on{border-color:var(--mod); background:var(--mod-bg)}
+  .num{width:58px; text-align:center}
+
+  /* the moderator's own panel — same slot as a seat's */
+  .card.mod{border-top-color:var(--mod); background:var(--mod-bg); border-color:#e8d4b8}
+  .card.mod h2{color:var(--mod)}
+  .card.mod .exp{font-size:12px; color:#7d5a2e; line-height:1.55; margin-bottom:9px}
+  .card.mod .exp b{color:var(--mod)}
+  .card.mod .grid{display:grid; grid-template-columns:2fr 1fr 1fr; gap:8px; margin-bottom:10px}
+  .card.mod label{color:#8a6636}
+  .card.mod input,.card.mod textarea{background:#fffdf9; border-color:#e3cfae}
+  .card.mod textarea{font-family:inherit; font-size:13px}
+  .card.mod .hint{font-size:11.5px; color:#8a6636; margin-top:5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Environmental Agent Roundtable</h1>
+  <div class="sub">Every agent argues from one knowledge base only, speaking in turn — interrupt whenever you like.
+    <a href="#" id="lnk-readme">How it works ↗</a>
+    <a href="/toolcreator" target="_blank" id="lnk-creator">Tool creator ↗</a>
+    <a href="/setapi" target="_blank" id="lnk-api">Set API ↗</a></div>
+
+  <div class="cols">
+    <div>
+      <div class="table">
+        <a href="/setapi" target="_blank" class="setapi">Set API</a>
+        <svg id="ring" viewBox="0 0 400 372" role="img" aria-label="roundtable"></svg>
+        <div class="ringhint" id="ringhint"></div>
+      </div>
+      <div class="panels" id="cards">
+<div class="card mod" id="card-MOD">
+  <h2>MODERATOR — THAT IS YOU</h2>
+      <div class="exp">
+        You moderate by typing in the box below whenever the dialogue pauses.
+        <b>Your assistant</b> is a model that works for you, not a participant: no knowledge base,
+        never takes a turn, <b>not one of the scientists</b>. Its only job is to rewrite a running
+        summary after every round, which is appended to every scientist's next prompt immediately
+        before "it is your turn" — the position a model weighs most heavily, and what stops a long
+        discussion dissolving into parallel monologues.
+        <br><br>
+        It is <b>slot 0</b> in <a href="/setapi" target="_blank">Set API</a>. Leave that slot blank
+        and it borrows slot 1; a small, fast, cheap model of its own is usually the better call,
+        since it runs once per round. To read or edit the summary it keeps, use
+        <b>Assistant &amp; summary</b> at the bottom of the window.
+      </div>
+    </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="transcript" id="transcript">
+        <div class="empty" id="empty"><div class="steps">
+          <div>Click a seat to set it up</div>
+          <div>→ <b>Onboard</b> <span class="aside">(may take minutes, depending on the API)</span></div>
+          <div>→ Enter a topic at the bottom</div>
+          <div>→ <b>Start</b></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="readme-ov">
+  <div class="sheet">
+    <div class="top">
+      <b>How it works</b>
+      <span class="helpsub" id="help-sub"></span>
+      <span class="sp"></span>
+      <button class="sm" id="readme-close">Close</button>
+    </div>
+
+    <div class="helplog" id="help-log"></div>
+
+    <div class="helpbar">
+      <div class="helprow" id="help-input">
+        <input id="help-q" class="grow" placeholder="Ask anything about this tool — what a tag means, what onboarding does, why a check fired…">
+        <button class="sm primary" id="help-send">Ask</button>
+        <button class="sm" id="help-stop" disabled>Stop</button>
+      </div>
+      <div class="helprow">
+        <button class="sm" id="readme-raw">Open README.md ↗</button>
+        <span class="helpnote" id="help-note"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="bar">
+  <div class="inner">
+    <div class="line">
+      <input id="topic" class="grow" placeholder="Topic — e.g. How far can data-driven design go where the mechanism is still unresolved?">
+      <span class="status">pause every <input id="pauseEvery" class="num" type="number" min="1" value="2"> rounds</span>
+      <button class="primary" id="btn-start">Start</button>
+      <button id="btn-resume" disabled>Resume</button>
+      <button id="btn-stop" disabled>Stop</button>
+      <button id="btn-import">Import .md</button>
+      <button id="btn-export">Export .md</button>
+      <input type="file" id="importfile" accept=".md,.markdown,.txt" style="display:none">
+    </div>
+    <!-- The summary belongs with the RUNNING controls, not with seat setup: it is rewritten every
+         round and goes into the next prompt. Clicking a seat should not surface it, and opening it
+         should not close whichever seat you were looking at. -->
+    <div class="line summaryline" id="summaryline" hidden>
+      <div class="grow">
+          <details class="sumwhy">
+          <summary>Running summary</summary>
+          <div>Your assistant rewrites it after every round, and it is appended to every
+            scientist's next prompt immediately before "it is your turn". Edit it freely; your
+            version is what they see next round.</div>
+          <textarea id="summary" rows="5" placeholder="(empty until the first round completes)"></textarea>
+        </details>
+      </div>
+    </div>
+    <div class="line modline" id="modline">
+      <input id="modinput" class="grow" placeholder="Moderator note (enabled while paused) — the scientists are instructed to answer it first" disabled>
+      <button class="mod" id="btn-send" disabled>Send &amp; resume</button>
+      <button id="btn-modpanel" title="show the running summary your assistant keeps">Assistant &amp; summary</button>
+      <span class="status" id="status">idle · round <b>0</b></span>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ══════════════════════════════════════════════
+   State
+   ══════════════════════════════════════════════ */
+const MAX_SCI = Infinity, MIN_SCI = 2;   // no upper limit; the ring grows to fit
+
+const S = {
+  status: "idle",       // idle | running | paused | stopped
+  round: 0,             // one round = every scientist speaks once, in roster order
+  roster: [],           // scientist ids in speaking order, e.g. ["S1","S2","S3"]
+  nextIdx: 0,           // index into roster of whoever speaks next (a round can be half done)
+  history: [],          // {source: sid | 'M' | 'Q' | 'S' | 'I', name, text, ts, extra?}
+  summary: "",          // moderator's running summary
+  topic: "",
+  abort: null,
+  seq: 0,               // id counter
+  sel: null,            // seat whose panel is open
+  ledger: [],           // every tool run anyone made: {id, round, owner, tool, args, out, ret}
+  flags: [],            // mechanical-check failures: {round, name, code, note}
+};
+
+const $ = id => document.getElementById(id);
+
+/* ══════════════════════════════════════════════
+   Provider settings live in api.json, edited on /setapi, and are bound to seats BY POSITION:
+   slot 0 is the moderator's assistant, slot 1 the first seat, slot 2 the second. Nothing about
+   a provider is stored per scientist any more — remove a seat and everyone below it moves up a
+   slot, which each card states outright so the change is visible rather than silent.
+   ══════════════════════════════════════════════ */
+let SLOTS = [];
+const usableSlot = s => !!(s && String(s.base_url || "").trim() && String(s.model || "").trim());
+const seatCapacity = () => Math.max(0, SLOTS.slice(1).filter(usableSlot).length);
+
+async function loadSlots(){
+  try{
+    const d = await (await fetch("/api/slots")).json();
+    SLOTS = d.slots || [];
+  }catch(e){ SLOTS = []; }
+  drawRing();
+  return SLOTS;
+}
+
+function slotFor(sid){                     // "MOD" -> 0, first seat -> 1, …
+  if(sid === "MOD") return usableSlot(SLOTS[0]) ? SLOTS[0] : SLOTS[1];
+  return SLOTS[idx(sid) + 1];
+}
+
+/* The seat-to-slot mapping is just the seating order, so it does not need repeating on every
+   card — one clause under the diagram says it for the whole table, and only speaks up when a
+   seated slot is not actually usable. */
+function apiNote(){
+  if(!SLOTS.length) return "";
+  const n = S.roster.length;
+  const bad = S.roster
+    .map((sid, i) => usableSlot(SLOTS[i + 1]) ? null : `slot ${i + 1}`)
+    .filter(Boolean);
+  if(bad.length)
+    return ` · <span style="color:#9a3232">${bad.join(", ")} not set up</span>`;
+  return ` · slots 1–${n}`;
+}
+
+const TEMPERATURE   = 0.7;
+const MAX_TOKENS    = 800;    // a turn
+const DOSSIER_TOK   = 2000;   // onboarding
+const SUMMARY_TOK   = 500;    // running summary
+const MAX_LOOKUPS   = 2;      // lookups allowed before each turn
+const MAX_TOOLCALLS = 6;      // tool runs allowed before each turn — enough to vary an
+                              // assumed value and report whether the conclusion moves
+const TOOLCARD_TOK  = 900;    // writing the tool card at onboarding
+const EXCERPT_CHARS = 1400;   // max chars returned per section
+const TOP_K         = 2;      // sections returned per lookup
+
+// NB: the storage key "paper" is kept for backward compatibility with saved configs;
+// in the interface it is called the knowledge base.
+const FIELDS = ["name","field","paper","dossier","phash",
+                "script","scriptname","toolsrc","toolrt","toolcard","toolhash"];
+const idx    = sid => S.roster.indexOf(sid);
+const colorOf = sid => "c" + ((idx(sid) % 8) + 1);
+
+/* ══════════════════════════════════════════════
+   Cards are generated — the roster is dynamic
+   ══════════════════════════════════════════════ */
+function cardHTML(sid, n){
+  return `
+    <h2>SEAT ${n} — <span id="${sid}-hdname">Scientist ${n}</span><button class="x" id="${sid}-del" title="remove seat">✕</button></h2>
+    <div class="row2">
+      <div><label>Name</label><input id="${sid}-name" value="Scientist ${n}"></div>
+      <div><label>Field</label><input id="${sid}-field" placeholder="e.g. membrane transport"></div>
+    </div>
+    <label>Text-based Tool
+      <span class="opt">· knowledge base</span></label>
+    <div class="hintline">A text-based tool — <code>@lookup:</code> retrieval over this knowledge
+      base — is already embedded in the system.</div>
+    <textarea id="${sid}-paper" rows="6" placeholder="Paste the Markdown text of a research paper etc., or pick a file below"></textarea>
+    <div class="filerow">
+      <input type="file" id="${sid}-file" accept=".md,.markdown,.txt">
+      <span class="count" id="${sid}-count">0 chars · 0 sections</span>
+    </div>
+
+    <details>
+      <summary>Code-based Tool <span class="opt">· a script (optional)</span><span class="st" id="${sid}-toolstate">no tool</span></summary>
+      <div class="hintline">A Python script this scientist can run. One JSON object in on stdin, one
+        JSON object out on stdout. Don't have one? Build it with this agent in the
+        <a href="/toolcreator" target="_blank" id="${sid}-toolmake">Tool creator ↗</a> — it writes
+        the script <em>and</em> the specification, and saves both into <code>tools/</code>.</div>
+      <select id="${sid}-toolpick"></select>
+      <div class="hintline">…or upload a script that is not in <code>tools/</code> yet. It has no
+        specification, so its conditions of validity are whatever the code happens to say.</div>
+      <input type="file" id="${sid}-toolfile" accept=".py,.R,.r">
+      <input type="hidden" id="${sid}-script">
+      <input type="hidden" id="${sid}-scriptname">
+      <input type="hidden" id="${sid}-toolsrc">
+      <input type="hidden" id="${sid}-toolrt">
+      <input type="hidden" id="${sid}-toolhash">
+    </details>
+
+    <div class="kb">
+      <div class="kbline">
+        <button class="sm" id="${sid}-read">Onboard</button>
+        <span class="kbstate" id="${sid}-kbstate">not onboarded</span>
+      </div>
+      <!-- Both are still real state: the profile is what onboarding distils and what goes into
+           the prompt, and the tool card is what every seat's instrument roster is built from.
+           They are just no longer on the card — nothing here is edited by hand. Both are
+           written into the export, and import fills them back, so a profile you want to correct
+           is corrected in the exported .md and imported. -->
+      <textarea id="${sid}-dossier" hidden></textarea>
+      <textarea id="${sid}-toolcard" hidden></textarea>
+      <input type="hidden" id="${sid}-phash">
+    </div>`;
+}
+
+const ACCENT = ["#2f6fb5", "#1e8a6e", "#7a4fb5", "#1f7a94",
+                "#a8443a", "#6b7a1f", "#a03b78", "#41598f"];
+
+/* ══════════════════════════════════════════════
+   The roundtable. Plain SVG: labelled boxes, a hub
+   and connecting lines — a diagram, not a chat app.
+   The moderator sits at the head, not at the centre;
+   the centre is the shared question.
+   ══════════════════════════════════════════════ */
+const CX = 200, CY = 214, HUB = 60;
+const BW = 108, BH = 36;                 // seat box
+/* Radius from the chord between neighbouring seats: with M nodes the chord is
+   2R·sin(π/M), and it has to clear a box width plus a gap. Small M keeps the
+   original look; large M simply pushes the ring outwards. */
+const ringRadius = M => Math.max(130, (BW / 2 + 7) / Math.sin(Math.PI / Math.max(M, 2)));
+
+function wrapText(str, per, max){
+  const words = String(str || "").split(/\s+/).filter(Boolean);
+  const lines = []; let cur = "";
+  for(const w of words){
+    if((cur + " " + w).trim().length > per && cur){ lines.push(cur); cur = w; }
+    else cur = (cur ? cur + " " : "") + w;
+    if(lines.length === max) break;
+  }
+  if(cur && lines.length < max) lines.push(cur);
+  if(lines.length === max && words.join(" ").length > lines.join(" ").length)
+    lines[max - 1] = lines[max - 1].replace(/.{0,2}$/, "…");
+  return lines;
+}
+
+function clip(str, n){
+  str = String(str || "");
+  return str.length > n ? str.slice(0, n - 1) + "…" : str;
+}
+
+function seatState(sid){
+  if(!$(sid+"-paper").value.trim()) return "empty";
+  if(!$(sid+"-dossier").value.trim()) return "loaded";
+  return "ready";
+}
+
+function drawRing(){
+  const svg = $("ring");
+  if(!svg) return;
+  const n = S.roster.length;
+  const locked = S.status === "running" || S.status === "paused";
+  const canAdd = n < MAX_SCI && !locked;
+  const M = n + (canAdd ? 1 : 0);          // seats, plus the + node when it is offered
+  const SLOTS = M + 1;                     // …and one reserved slot for the moderator
+  const RING = ringRadius(SLOTS);
+  const MODY = CY - RING - 30;             // the head of the table sits outside the ring
+  const parts = [];
+  const ext = {x0: CX - 62, x1: CX + 62, y0: MODY - 13, y1: CY + HUB};
+  const grow = (x0, y0, x1, y1) => {
+    ext.x0 = Math.min(ext.x0, x0); ext.y0 = Math.min(ext.y0, y0);
+    ext.x1 = Math.max(ext.x1, x1); ext.y1 = Math.max(ext.y1, y1);
+  };
+
+  // moderator at the head of the table, joined to the hub by one line
+  parts.push(`<line class="ringline" x1="${CX}" y1="${MODY + 13}" x2="${CX}" y2="${CY - HUB}"/>`);
+  parts.push(`<g class="modbox seatbox ${S.sel === "MOD" ? "sel" : ""}" data-sid="MOD">`
+           + `<rect x="${CX - 62}" y="${MODY - 13}" width="124" height="26" rx="5"/>`
+           + `<text x="${CX}" y="${MODY + 4}" text-anchor="middle">MODERATOR</text></g>`);
+
+  // the hub carries the shared question
+  const topic = ($("topic") && $("topic").value.trim()) || "";
+  parts.push(`<circle class="hub" cx="${CX}" cy="${CY}" r="${HUB}"/>`);
+  parts.push(`<text class="hublabel" x="${CX}" y="${CY - HUB + 23}" text-anchor="middle">SHARED QUESTION</text>`);
+  const tl = topic ? wrapText(topic, 20, 5) : ["(no question yet)"];
+  const y0 = CY - (tl.length - 1) * 6.5 + 4;
+  tl.forEach((ln, i) => parts.push(
+    `<text class="hubtext" x="${CX}" y="${y0 + i * 13}" text-anchor="middle"${topic ? "" : ' fill="#a09a90"'}>${esc(ln)}</text>`));
+
+  // seats, evenly spaced with the gap left at the top for the moderator
+  const ang = i => (270 + (360 / SLOTS) * (i + 1)) * Math.PI / 180;   // slot 0 is the moderator
+
+  S.roster.forEach((sid, i) => {
+    const a = ang(i), c = Math.cos(a), sn = Math.sin(a);
+    const x = CX + RING * c, y = CY + RING * sn;
+    const col = ACCENT[i % 8];
+    parts.push(`<line class="ringline" x1="${(CX + HUB * c).toFixed(1)}" y1="${(CY + HUB * sn).toFixed(1)}" `
+             + `x2="${(x - (BW / 2 - 6) * c).toFixed(1)}" y2="${(y - (BH / 2 - 4) * sn).toFixed(1)}"/>`);
+    grow(x - BW / 2, y - BH / 2, x + BW / 2, y + BH / 2);
+    const st = seatState(sid);
+    const dot = st === "ready" ? `fill="${col}" stroke="${col}"`
+              : st === "loaded" ? `fill="#fff" stroke="${col}"` : `fill="#fff" stroke="#c9c5bb"`;
+    parts.push(
+      `<g class="seatbox ${S.sel === sid ? "sel" : ""}" data-sid="${sid}">`
+      + `<rect x="${(x - BW / 2).toFixed(1)}" y="${(y - BH / 2).toFixed(1)}" width="${BW}" height="${BH}" rx="5" stroke="${col}"/>`
+      + `<circle class="dot" cx="${(x - BW / 2 + 10).toFixed(1)}" cy="${(y - BH / 2 + 10).toFixed(1)}" r="3.2" ${dot}/>`
+      + `<text class="seatname" x="${x.toFixed(1)}" y="${(y - 3).toFixed(1)}" text-anchor="middle" fill="${col}">`
+      + `${esc(clip(cfg(sid).name, 17))}</text>`
+      + `<text class="seatsub" x="${x.toFixed(1)}" y="${(y + 10).toFixed(1)}" text-anchor="middle">`
+      + `${esc(clip($(sid+"-field").value.trim() || "no field given", 24))}</text>`
+      + `</g>`);
+  });
+
+  if(canAdd){
+    const a = ang(n), x = CX + RING * Math.cos(a), y = CY + RING * Math.sin(a);
+    parts.push(`<line class="ringline" stroke-dasharray="3 3" x1="${(CX + HUB * Math.cos(a)).toFixed(1)}" `
+             + `y1="${(CY + HUB * Math.sin(a)).toFixed(1)}" x2="${(x - 16 * Math.cos(a)).toFixed(1)}" `
+             + `y2="${(y - 16 * Math.sin(a)).toFixed(1)}"/>`);
+    grow(x - 15, y - 15, x + 15, y + 15);
+    parts.push(`<g class="addnode" id="addnode"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="15"/>`
+             + `<text x="${x.toFixed(1)}" y="${(y + 5.5).toFixed(1)}" text-anchor="middle">+</text></g>`);
+  }
+
+  const PAD = 12;
+  svg.setAttribute("viewBox",
+    `${(ext.x0 - PAD).toFixed(0)} ${(ext.y0 - PAD).toFixed(0)} `
+    + `${(ext.x1 - ext.x0 + 2 * PAD).toFixed(0)} ${(ext.y1 - ext.y0 + 2 * PAD).toFixed(0)}`);
+  svg.innerHTML = parts.join("");
+  svg.querySelectorAll("[data-sid]").forEach(g =>
+    g.addEventListener("click", () => selectSeat(g.getAttribute("data-sid"))));
+  const add = $("addnode");
+  if(add) add.addEventListener("click", async () => {
+    await loadSlots();                   // the Set API tab may have gained a slot just now
+    // one seat per usable slot; slot 0 is the moderator's assistant and is not a seat
+    if(S.roster.length >= seatCapacity()){
+      alert(`Not enough API slots.\n\n`
+        + `api.json has room for ${seatCapacity()} scientist${seatCapacity() === 1 ? "" : "s"}, `
+        + `and ${S.roster.length} ${S.roster.length === 1 ? "is" : "are"} already seated.\n\n`
+        + `Slot 0 belongs to the moderator's assistant, and a slot only counts once it has both `
+        + `a base_url and a model.\n\nOpen "Set API", add one, then press + again.`);
+      return;
+    }
+    const sid = addScientist(); if(sid) selectSeat(sid);
+  });
+
+  $("ringhint").innerHTML = locked
+    ? `<span class="lock">Line-up locked while the roundtable is running — press Stop to change it</span>`
+    : `<b>Click a seat to set it up</b>, or <b>+</b> to add one `
+      + `<span style="color:var(--muted)">· ${n} seats · one round = ${n} model calls`
+      + `${apiNote()}</span>`;
+}
+
+function selectSeat(sid){
+  S.sel = sid;
+  for(const s2 of [...S.roster, "MOD"]) $("card-" + s2).classList.toggle("on", s2 === sid);
+  drawRing();
+}
+
+function addScientist(seed){
+  if(S.roster.length >= MAX_SCI) return null;
+  const sid = "S" + (++S.seq);
+  S.roster.push(sid);
+
+  const el = document.createElement("div");
+  el.className = "card " + colorOf(sid);
+  el.id = "card-" + sid;
+  el.innerHTML = cardHTML(sid, S.roster.length);
+  $("cards").appendChild(el);
+
+  const prev = S.roster[S.roster.length - 2];
+  if(prev){
+  }
+  if(seed) for(const f in seed) if($(sid+"-"+f)) $(sid+"-"+f).value = seed[f];
+
+  $(sid+"-paper").addEventListener("input", () => refreshKB(sid));
+  $(sid+"-file").addEventListener("change", async e => {
+    const f = e.target.files[0]; if(!f) return;
+    $(sid+"-paper").value = await f.text();
+    refreshKB(sid); saveCfg();
+  });
+  $(sid+"-toolfile").addEventListener("change", async e => {
+    const f = e.target.files[0]; if(!f) return;
+    $(sid+"-script").value = await f.text();
+    $(sid+"-scriptname").value = f.name;
+    $(sid+"-toolsrc").value = "";                       // not from the registry: no spec
+    $(sid+"-toolrt").value = /\.r$/i.test(f.name) ? "rscript" : "python";
+    $(sid+"-toolpick").value = "";
+    refreshKB(sid); saveCfg();
+  });
+  $(sid+"-toolpick").addEventListener("change", e => pickTool(sid, e.target.value));
+  // the Tool creator may be open in another tab; re-read the folder when you go looking
+  $(sid+"-toolpick").addEventListener("focus", loadRegistry);
+  fillToolPick(sid);
+  $(sid+"-read").addEventListener("click", () => runDossier(sid));
+  $(sid+"-del").addEventListener("click", () => removeScientist(sid));
+  for(const f of ["name","field"]) $(sid+"-"+f).addEventListener("input", () => {
+    $(sid+"-hdname").textContent = $(sid+"-name").value.trim() || "unnamed";
+    drawRing();
+  });
+
+  refreshKB(sid); refreshRoster(); saveCfg();
+  return sid;
+}
+
+function removeScientist(sid){
+  if(S.roster.length <= MIN_SCI) return;
+  if(S.status === "running" || S.status === "paused") return;
+  S.roster.splice(idx(sid), 1);
+  $("card-" + sid).remove();
+  if(S.sel === sid) selectSeat("MOD");
+  renumber(); refreshRoster(); saveCfg();
+}
+
+function renumber(){
+  S.roster.forEach((sid, i) => {
+    const card = $("card-" + sid);
+    card.className = "card " + colorOf(sid) + (S.sel === sid ? " on" : "");
+    card.querySelector("h2").childNodes[0].nodeValue = "SEAT " + (i + 1) + " — ";
+    const nm = $(sid+"-name");
+    if(/^Scientist \d+$/.test(nm.value)) nm.value = "Scientist " + (i + 1);
+  });
+}
+
+function refreshRoster(){
+  const n = S.roster.length, locked = S.status === "running" || S.status === "paused";
+  for(const sid of S.roster) $(sid+"-del").disabled = n <= MIN_SCI || locked;
+  drawRing();
+}
+
+/* ══════════════════════════════════════════════
+   Config (persisted in localStorage)
+   ══════════════════════════════════════════════ */
+function cfg(sid){
+  return {
+    sid,
+    name:    $(sid+"-name").value.trim()  || ("Scientist " + (idx(sid) + 1)),
+    field:   $(sid+"-field").value.trim() || "(field not given)",
+    base:    (slotFor(sid) || {}).base_url || "",
+    model:   (slotFor(sid) || {}).model    || "",
+    key:     (slotFor(sid) || {}).api_key  || "",
+    paper:   $(sid+"-paper").value.trim(),
+    dossier: $(sid+"-dossier").value.trim(),
+    script:  $(sid+"-script").value,
+    scriptname: $(sid+"-scriptname").value,
+    toolsrc: $(sid+"-toolsrc").value,
+    toolrt:  $(sid+"-toolrt").value || "python",
+    toolcard: $(sid+"-toolcard").value.trim(),
+  };
+}
+
+/* the moderator falls back to the first scientist's provider */
+function modCfg(){
+  const s = slotFor("MOD") || {};
+  return {name: "MODERATOR", base: s.base_url || "", model: s.model || "", key: s.api_key || ""};
+}
+
+function saveCfg(){
+  try{
+    const o = {
+      topic: $("topic").value, pauseEvery: $("pauseEvery").value,
+      summary: S.summary, roster: S.roster, seq: S.seq, sci: {},
+    };
+    for(const sid of S.roster){
+      o.sci[sid] = {};
+      for(const f of FIELDS) o.sci[sid][f] = $(sid+"-"+f).value;
+    }
+    localStorage.setItem("estdialogue.cfg", JSON.stringify(o));
+  }catch(e){ /* private mode etc. — ignore */ }
+}
+
+function loadCfg(){
+  let o = {};
+  try{ o = JSON.parse(localStorage.getItem("estdialogue.cfg") || "{}"); }catch(e){}
+
+  if(o.topic) $("topic").value = o.topic;
+  if(o.pauseEvery) $("pauseEvery").value = o.pauseEvery;
+  S.summary = o.summary || "";
+  $("summary").value = S.summary;
+
+  const saved = Array.isArray(o.roster) ? o.roster : [];
+  if(saved.length && o.sci){
+    S.seq = o.seq || 0;
+    for(const sid of saved){
+      const s = addScientist();
+      if(!s) break;
+      for(const f of FIELDS) if(o.sci[sid] && o.sci[sid][f] !== undefined) $(s+"-"+f).value = o.sci[sid][f];
+      fillToolPick(s);
+      refreshKB(s);
+    }
+  }
+  while(S.roster.length < MIN_SCI) addScientist();
+  refreshRoster();
+  selectSeat(S.roster[0]);
+}
+
+/* Fingerprint of the knowledge base: flags a profile built from an older version */
+function hash(s){
+  let h = 5381;
+  for(let i=0;i<s.length;i++) h = ((h*33) ^ s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
+function refreshKB(sid){
+  refreshTool(sid);                       // independent of the knowledge-base state
+  if($(sid+"-hdname")) $(sid+"-hdname").textContent = $(sid+"-name").value.trim() || "unnamed";
+  drawRing();
+  const paper = $(sid+"-paper").value.trim();
+  const secs = splitSections(paper);
+  $(sid+"-count").textContent = paper.length.toLocaleString() + " chars · " + secs.length + " sections";
+
+  const el = $(sid+"-kbstate");
+  const dossier = $(sid+"-dossier").value.trim();
+  el.className = "kbstate";
+  if(!paper){ el.textContent = "knowledge base missing"; return; }
+  if(!dossier){ el.textContent = "not onboarded"; return; }
+  if($(sid+"-phash").value !== hash(paper)){
+    el.textContent = "knowledge base changed — re-onboard"; el.classList.add("warn"); return;
+  }
+  el.textContent = "onboarded · profile " + dossier.length + " chars"; el.classList.add("ok");
+}
+
+function refreshTool(sid){
+  const el = $(sid+"-toolstate");
+  const script = $(sid+"-script").value;
+  const card = $(sid+"-toolcard").value.trim();
+  const src = $(sid+"-toolsrc").value;
+  el.className = "st";
+  const mk = $(sid+"-toolmake");
+  if(mk) mk.href = src ? "/toolcreator?tool=" + encodeURIComponent(src) : "/toolcreator";
+  if(!script){ el.textContent = "no tool"; return; }
+  const nm = $(sid+"-scriptname").value || "script.py";
+  if(!card){ el.textContent = nm + " · not read yet"; return; }
+  if($(sid+"-toolhash").value !== hash(script)){
+    el.textContent = nm + " · script changed, re-onboard"; return;
+  }
+  el.textContent = nm + (src ? " · from tools/, ready" : " · ready"); el.classList.add("on");
+}
+
+/* ══════════════════════════════════════════════
+   The tools/ folder is the default place a tool comes
+   from — it is where the Tool creator writes them.
+   ══════════════════════════════════════════════ */
+let REG = [];
+
+async function loadRegistry(){
+  try{
+    const r = await fetch("/api/tools");
+    REG = (await r.json()).tools || [];
+  }catch(e){ REG = []; }
+  for(const sid of S.roster) fillToolPick(sid);
+}
+
+function fillToolPick(sid){
+  const sel = $(sid+"-toolpick"); if(!sel) return;
+  const cur = $(sid+"-toolsrc").value;
+  sel.innerHTML = `<option value="">— no tool —</option>`
+    + REG.map(t => `<option value="${t.name}"${t.name === cur ? " selected" : ""}>`
+        + `${t.name}${t.status === "ready" ? "" : "  (" + t.status + ")"}</option>`).join("")
+    + (REG.length ? "" : `<option value="" disabled>tools/ is empty — make one in the Tool creator</option>`);
+  if(cur && !REG.some(t => t.name === cur))     // picked earlier, since deleted
+    sel.insertAdjacentHTML("beforeend", `<option value="${cur}" selected>${cur} (missing)</option>`);
+}
+
+/* A tool that came from the registry already has a written specification. Turning that into the
+   calling card directly beats asking the model to re-derive one from the code: it costs no call,
+   it cannot drift from the spec, and — the point — it carries `conditions` into the prompt. */
+function cardFromSpec(spec){
+  const P = (spec.parameters || []).map(p =>
+    `  - ${p.key} (${p.type || "number"}, ${p.required === false ? "optional" : "required"})`
+    + ` — ${p.resolution || p.description || ""}${p.unit ? ` [${p.unit}]` : ""}`
+    + (p.default !== undefined
+        ? ` (default ${p.default}${p.default_source ? `; source: ${p.default_source}` : "; SOURCE NOT STATED"})`
+        : "")).join("\n");
+  const R = Object.entries(spec.returns || {})
+    .map(([k, v]) => `  - ${k}${v && v.unit ? ` [${v.unit}]` : ""}`
+       + (v && v.resolution ? ` — ${v.resolution}` : "")).join("\n");
+  const ex = (spec.examples || [])[0];
+  const pv = spec.provenance || {};
+  return [
+    `NAME: ${spec.name}`,
+    `PURPOSE: ${spec.title || spec.description || ""}`,
+    `PARAMETERS:`, P || "  (none)",
+    R ? `RETURNS:\n${R}` : `RETURNS: (unspecified)`,
+    `CONDITIONS: ${spec.conditions || "NOT STATED — treat every result as unvalidated."}`,
+    `SOURCE: ${pv.class === "published" ? "published — " + (pv.citation || "no citation")
+             : pv.class === "model_drafted" ? "model-drafted, NOT validated" : "not stated"}`,
+    ex ? `EXAMPLE: @tool: ${JSON.stringify(Object.fromEntries(
+           Object.entries(ex.args || {}).map(([k, v]) => [k, {v, src: "source"}])))}` : "",
+  ].filter(Boolean).join("\n");
+}
+
+async function pickTool(sid, name){
+  if(!name){
+    for(const f of ["script","scriptname","toolsrc","toolrt","toolhash"]) $(sid+"-"+f).value = "";
+    $(sid+"-toolcard").value = ""; refreshTool(sid); saveCfg(); return;
+  }
+  const r = await fetch("/api/tools/" + encodeURIComponent(name));
+  const d = await r.json();
+  if(d.error){ alert(d.error); return; }
+  if(!d.script){ alert(`${name} has no script in tools/ yet.`); return; }
+  $(sid+"-script").value = d.script;
+  $(sid+"-toolrt").value = d.runtime || "python";
+  $(sid+"-scriptname").value = name + (d.runtime === "rscript" ? ".R" : ".py");
+  $(sid+"-toolsrc").value = name;
+  if(d.spec){                          // no model call needed: the card is the spec
+    $(sid+"-toolcard").value = cardFromSpec(d.spec);
+    $(sid+"-toolhash").value = hash(d.script);
+  }else{
+    $(sid+"-toolcard").value = ""; $(sid+"-toolhash").value = "";
+  }
+  refreshTool(sid); saveCfg();
+}
+
+document.addEventListener("input", e => {
+  if(e.target && e.target.id === "summary") S.summary = e.target.value;
+  saveCfg();
+});
+
+/* ══════════════════════════════════════════════
+   Knowledge base: split by heading + keyword search.
+   No vectors, no embeddings — for a one-off tool this
+   is enough, and what got retrieved stays explainable.
+   ══════════════════════════════════════════════ */
+const SEC_MAX = 2600;   // chunk any section longer than this
+
+function splitSections(md){
+  if(!md) return [];
+  const lines = md.split(/\r?\n/);
+  const raw = [];
+  let cur = {title:"(opening)", lines:[]};
+  for(const ln of lines){
+    const m = ln.match(/^(#{1,6})\s+(.+?)\s*$/);
+    if(m){
+      if(cur.lines.join("").trim() || cur.lines.length) raw.push(cur);
+      cur = {title:m[2], lines:[]};
+    }else{
+      cur.lines.push(ln);
+    }
+  }
+  raw.push(cur);
+
+  const out = [];
+  for(const s of raw){
+    const text = s.lines.join("\n").trim();
+    if(!text && out.length) continue;
+    if(text.length <= SEC_MAX){
+      out.push({title:s.title, text});
+    }else{
+      for(let i=0, p=1; i<text.length; i+=SEC_MAX, p++){
+        out.push({title:s.title + (p>1 ? ` (cont. ${p})` : ""), text:text.slice(i, i+SEC_MAX)});
+      }
+    }
+  }
+  return out.map((s,i)=>({id:"§"+(i+1), ...s}));
+}
+
+function toc(secs){
+  return secs.map(s => `${s.id} ${s.title} (${s.text.length} chars)`).join("\n");
+}
+
+function terms(q){
+  const parts = q.split(/[\s,;/|"'“”()\[\]]+/).filter(t=>t.length>=3);
+  if(parts.length) return parts.slice(0,8);
+  const t = q.replace(/\s/g,""); const out = [];
+  for(let i=0;i<t.length-1 && out.length<8;i++) out.push(t.slice(i,i+2));
+  return out;
+}
+
+function countOf(hay, needle){
+  let i=0,c=0; const h=hay.toLowerCase(), n=needle.toLowerCase();
+  while((i=h.indexOf(n,i))>=0){c++; i+=n.length;}
+  return c;
+}
+
+function search(secs, query){
+  const byId = query.match(/§\s*(\d+)|^\s*(\d+)\s*$/);
+  if(byId){
+    const n = byId[1] || byId[2];
+    const hit = secs.find(s => s.id === "§"+n);
+    if(hit) return [hit];
+  }
+  const ts = terms(query);
+  const score = s => {
+    let v = 0;
+    for(const t of ts){
+      v += countOf(s.text, t) * Math.min(t.length, 6);
+      if(s.title.toLowerCase().includes(t.toLowerCase())) v += 10;
+    }
+    return v;
+  };
+  const ranked = secs.map(s => ({s, v:score(s)})).filter(x => x.v > 0);
+  ranked.sort((a,b)=>b.v-a.v);
+  return ranked.slice(0, TOP_K).map(x=>x.s);
+}
+
+function excerpt(secs, queries){
+  const picked = [], seen = new Set();
+  for(const q of queries){
+    for(const s of search(secs, q)){
+      if(seen.has(s.id)) continue;
+      seen.add(s.id); picked.push({q, s});
+    }
+  }
+  if(!picked.length)
+    return "(Nothing in your knowledge base matched. Do not invent anything — if there is no basis, say so.)";
+  return picked.map(({q,s}) =>
+    `── ${s.id} ${s.title}  (matched: ${q}) ──\n${s.text.slice(0, EXCERPT_CHARS)}` +
+    (s.text.length > EXCERPT_CHARS ? "\n…(rest of section omitted)" : "")
+  ).join("\n\n");
+}
+
+/* ══════════════════════════════════════════════
+   Onboarding: read the knowledge base once, build a profile
+   ══════════════════════════════════════════════ */
+function dossierMessages(paper){
+  return [
+    {role:"system", content:"You are a rigorous research assistant. Your output is used directly as a role definition by another system, so return only what is asked for — no preamble, no commentary on what you are doing."},
+    {role:"user", content:
+`Below is the full text of one researcher's knowledge base — a research paper, thesis, report or similar document. Read it and produce a SCIENTIST PROFILE that another system will use to play this researcher.
+
+Use exactly these headings, and keep the whole thing under 900 words:
+
+## Core claims
+The 2-4 conclusions this source is really trying to establish. One sentence each.
+
+## Method framework
+What was actually done: techniques, length/time scales, data sources. This is the skeleton that any later extrapolation has to be built on.
+
+## Key evidence
+Citable specifics: numbers, conditions, controls, comparisons. Note which section each comes from.
+
+## Explicit boundaries
+What this source did NOT do, did not cover, or admits as a limitation. This determines what must later be labelled as extrapolation.
+
+## Voice
+How this author argues: quantitative or mechanistic, cautious or willing to extrapolate, characteristic terminology.
+
+Knowledge base:
+<<<BEGIN>>>
+${paper}
+<<<END>>>`}
+  ];
+}
+
+function toolCardMessages(script, name){
+  return [
+    {role:"system", content:"You write calling cards for tools. Your output is read by another model that has to call the tool correctly on the first try, so be exact about parameter names and units. Output only the card."},
+    {role:"user", content:
+`Below is a Python script that a scientist can run as a tool during a discussion.
+
+It is invoked like this: one JSON object arrives on stdin, one JSON object is written to stdout.
+
+Read the script and write its calling card in exactly this shape, nothing else:
+
+NAME: <short_snake_case_name>
+PURPOSE: <one line: what question this answers>
+PARAMETERS:
+  - <key> (<type>, required|optional) — <meaning, and the UNIT if there is one>
+  - ...
+RETURNS: <what the output JSON contains, with units>
+LIMITS: <what it assumes or cannot do — leave out if the script says nothing>
+EXAMPLE: @tool: {"<key>": {"v": <value>, "src": "source"}, ...}
+
+Rules:
+- Take parameter names verbatim from the code that reads stdin. Getting a key name wrong makes the tool unusable.
+- If a unit is implied by the maths but never stated, say so rather than guessing silently.
+- The EXAMPLE line must be valid JSON on one line. Every argument is wrapped as
+  {"v": <value>, "src": "source"} — the caller replaces "source" with where its value really
+  came from ("R7" for a logged run, "assumed" for one it chose itself).
+
+Script (${name}):
+<<<BEGIN>>>
+${script}
+<<<END>>>`}
+  ];
+}
+
+async function runDossier(sid){
+  const c = cfg(sid);
+  if(!c.paper) return alert(`${c.name} has no knowledge base yet.`);
+  if(!c.base || !c.model) return alert(`${c.name} is missing base_url / model.`);
+
+  const st = $(sid+"-kbstate");
+  st.className = "kbstate"; st.textContent = "onboarding… (reads the whole knowledge base, once)";
+  $(sid+"-read").disabled = true;
+  try{
+    const text = await call(c, dossierMessages(c.paper), DOSSIER_TOK);
+    $(sid+"-dossier").value = text.trim();
+    $(sid+"-phash").value = hash(c.paper);
+    saveCfg();
+
+    const script = $(sid+"-script").value;
+    if(script && $(sid+"-toolhash").value !== hash(script)){
+      st.textContent = "reading the tool script…";
+      const card = await call(c, toolCardMessages(script, $(sid+"-scriptname").value), TOOLCARD_TOK);
+      $(sid+"-toolcard").value = card.trim();
+      $(sid+"-toolhash").value = hash(script);
+      saveCfg();
+    }
+  }catch(e){
+    st.className = "kbstate warn"; st.textContent = "onboarding failed: " + e.message;
+    $(sid+"-read").disabled = false;
+    throw e;
+  }
+  $(sid+"-read").disabled = false;
+  refreshKB(sid);
+}
+
+/* ══════════════════════════════════════════════
+   Moderator agent: rewrites the running summary
+   after every completed round. Never speaks in the
+   transcript — it only maintains this text.
+   ══════════════════════════════════════════════ */
+function summaryMessages(){
+  const lines = S.history
+    .filter(m => !"QSIT".includes(m.source))
+    .map(m => `[${m.source === "M" ? "MODERATOR" : m.name}] ${m.text}`)
+    .join("\n\n");
+
+  return [
+    {role:"system", content:
+`You are the moderator's note-taker for a scientific dialogue. You produce ONE short running summary that is shown to every participant before they speak. It is the only thing keeping a long discussion coherent, so it must be dense and current.
+
+Rules:
+- Under 200 words. Shorter is better. No preamble, no headings, no meta-commentary.
+- State where the discussion actually stands: the live disagreement, what each participant has committed to, and anything the moderator has asked for that is still unresolved.
+- Name people explicitly.
+- Do not invent agreement that has not happened. If they are talking past each other, say so.
+- Output the summary text only.`},
+    {role:"user", content:
+`Topic: ${S.topic}
+
+Previous summary (rewrite it, do not append):
+${S.summary || "(none yet — this is the first round)"}
+
+Full transcript so far:
+${lines}
+
+Write the updated running summary.`}
+  ];
+}
+
+async function updateSummary(){
+  const c = modCfg();
+  if(!c.base || !c.model) return;                 // no moderator configured — skip quietly
+  try{
+    const text = await call(c, summaryMessages(), SUMMARY_TOK);
+    S.summary = text.trim();
+    $("summary").value = S.summary;
+    saveCfg();
+  }catch(e){
+    if(e.name === "AbortError") return;
+    bubble("I", "Summary", "the running summary could not be updated: " + e.message
+      + " — the dialogue continues without it.");
+  }
+}
+
+/* ══════════════════════════════════════════════
+   The instrument roster.
+
+   A tool card used to go only into its owner's prompt, so nobody could see what anyone
+   else could compute. That made the interesting failure impossible: Agent-F never learns
+   that Agent-Q needs kWh, Agent-Q never learns to ask for it, and the mismatch that the
+   whole exercise is about is never reached.
+
+   The roster carries the parameter lines VERBATIM, because they hold the unit AND the
+   resolution. Units alone make two marginals look composable; the resolution line is what
+   shows they are not. `conditions` stays with the owner — it is long, and it is the
+   owner's business to enforce.
+   ══════════════════════════════════════════════ */
+function rosterEntry(card){
+  const keep = [], lines = String(card).split("\n");
+  let inList = false;
+  for(const ln of lines){
+    if(/^\s*(CONDITIONS|SOURCE|REVIEWED|EXAMPLE|LIMITS)\s*:/i.test(ln)){ inList = false; continue; }
+    // both PARAMETERS and RETURNS carry bullet lines: the resolution of what a method
+    // returns is the other half of the join a caller has to check
+    if(/^\s*(PARAMETERS|RETURNS)\s*:/i.test(ln)){ inList = true; keep.push(ln.trim()); continue; }
+    if(/^\s*(NAME|PURPOSE)\s*:/i.test(ln)){ inList = false; keep.push(ln.trim()); continue; }
+    if(inList && /^\s*-/.test(ln)) keep.push("  " + ln.trim());
+  }
+  return keep.join("\n");
+}
+
+function instrumentRoster(mySid){
+  const rows = [];
+  for(const sid of S.roster){
+    const c = cfg(sid);
+    if(!c.toolcard || !c.script) continue;
+    const body = rosterEntry(c.toolcard);
+    if(!body) continue;
+    rows.push(`${c.name}${sid === mySid ? "  (yours)" : ""} —\n`
+      + body.split("\n").map(l => "  " + l).join("\n"));
+  }
+  if(!rows.length) return "";
+  return `
+# Instruments at this table
+These are every participant's callable methods. You can see what the others can compute, with
+the unit AND the resolution of each argument.
+
+${rows.join("\n\n")}
+
+**You can only run your own.** To use someone else's, ask them for the number in your reply —
+say which argument you need, in which unit, at which resolution. If the resolution they can
+supply is not the one your method needs, say that out loud; that mismatch is a finding, not an
+obstacle to route around.
+`;
+}
+
+/* ══════════════════════════════════════════════
+   The result ledger.
+
+   Every tool run anybody makes is recorded with an id. The ledger goes into everyone's
+   prompt, so a number produced by one participant can be picked up by another BY REFERENCE
+   rather than by retyping — and a retyped number with no reference is then detectable.
+   ══════════════════════════════════════════════ */
+function returnsLine(card){
+  const L = String(card).split("\n");
+  const i = L.findIndex(x => /^\s*RETURNS\s*:/i.test(x));
+  if(i < 0) return "";
+  const head = L[i].replace(/^\s*RETURNS\s*:\s*/i, "").trim();
+  if(head) return head;
+  const rows = [];
+  for(let k = i + 1; k < L.length && /^\s*-/.test(L[k]); k++) rows.push(L[k].replace(/^\s*-\s*/, "").trim());
+  return rows.join("; ");
+}
+
+function ledgerEntry(owner, tool, args, res, card, judged){
+  const id = "R" + (S.ledger.length + 1);
+  const ret = res.ok ? (res.not_json ? res.raw : JSON.stringify(res.result)) : null;
+  const e = {id, round: S.round, owner, tool, args, ret,
+             returns: returnsLine(card), ok: !!res.ok,
+             error: res.ok ? "" : (res.error || ""),
+             prov: (judged && judged.prov) || {},
+             assumed: !!(judged && judged.assumed),
+             why: (judged && judged.why) || [],
+             via: (judged && judged.via) || []};
+  S.ledger.push(e);
+  return e;
+}
+
+/* One line per argument, showing where its value came from. This is what makes a
+   number reusable by someone else: not the number, the account of it. */
+function provLine(e){
+  const parts = Object.entries(e.prov || {}).map(([k, p]) =>
+    `${k}←${p.kind === "sourced" ? (p.via || "source") : p.kind === "unverified" ? "unverified" : "assumed"}`);
+  return parts.join(", ");
+}
+
+function ledgerBlock(){
+  const ok = S.ledger.filter(e => e.ok);
+  if(!ok.length) return "";
+  return `
+# Results on the table
+Every tool run in this dialogue, in order. These numbers are shared: you may use one that
+someone else produced, but you must cite it.
+
+${ok.map(e => `[${e.id}] ${e.owner} · ${e.tool}${e.assumed ? "   ** ASSUMED **" : ""}\n`
+  + `     args ${JSON.stringify(e.args)}\n`
+  + `     from ${provLine(e) || "(not declared)"}\n`
+  + `     → ${e.ret}${e.returns ? `     (returns: ${e.returns})` : ""}`).join("\n")}
+
+To use one of these, write \`[COMPUTED from ${ok[ok.length-1].id}]\`, and pass the value on with
+\`{"v": …, "src": "${ok[ok.length-1].id}"}\`. A computed number with no [R…] reference is treated
+as unsourced.
+
+**A run marked ASSUMED stays assumed downstream.** If you feed one of its numbers into your own
+method, your run is ASSUMED too — that is not a penalty, it is the accounting. Before you reuse
+anyone's result, check its argument resolutions against what your own method needs; see the
+instrument roster.
+`;
+}
+
+/* ══════════════════════════════════════════════
+   System prompt
+   ══════════════════════════════════════════════ */
+function systemPrompt(me, others, secs){
+  const roster = others.map(o => `${o.name} (${o.field})`).join(", ");
+  return `You are ${me.name}, a researcher working on ${me.field}.
+You are in a scientific dialogue convened by a MODERATOR. The other participants are: ${roster}.
+Everyone speaks in a fixed order, one after another. You can see everything said before your turn.
+
+${me.dossier ? `# Your knowledge
+You have already read your own knowledge base end to end — the paper, thesis or report you work from. This is the profile you distilled from it — treat it as your long-term memory:
+
+<<<PROFILE BEGIN>>>
+${me.dossier}
+<<<PROFILE END>>>
+` : `# Your knowledge
+**You have not distilled a profile of your source.** You have its table of contents below and
+nothing else — no summary, no remembered numbers, no sense of what it concludes.
+
+So every specific claim you make has to come from a \`@lookup\`. You have nothing to lean on and
+you must not reconstruct the source from memory: if you have not looked it up in this turn, you
+do not know it. Where a lookup returns nothing, say that your knowledge base offers no evidence
+rather than filling the gap from general knowledge — general knowledge is not what you are here
+to contribute.
+`}
+# Table of contents of your knowledge base (available for lookup)
+${toc(secs)}
+${me.toolcard ? `
+# Your instrument
+You can run one tool of your own. This is its calling card:
+
+<<<TOOL BEGIN>>>
+${me.toolcard}
+<<<TOOL END>>>
+
+To run it, reply with **one tool line only, and do not speak in the same reply**. **Every
+argument declares where its value came from:**
+
+@tool: {"pressure_bar": {"v": 55, "src": "source"}, "flow_m3_h": {"v": 120, "src": "R3"}, "leak_frac": {"v": 0.02, "src": "assumed"}}
+
+\`src\` is one of exactly three:
+- \`"R7"\` — the value came out of run R7 on the table. Checked: it must actually appear in what R7 returned.
+- \`"source"\` — it is in your knowledge base, in something you looked up this turn, or in what someone said here.
+- \`"assumed"\` — you chose it. Nobody has established it.
+
+**A bare value with no wrapper is recorded as assumed.** So is a \`"source"\` claim whose value
+cannot be found. If you meant it and it is in your knowledge base, \`@lookup\` it first and then
+pass it — a value that has just been retrieved verifies. Do not use \`"assumed"\` to avoid the
+work of citing, and do not use \`"source"\` to avoid admitting an assumption: the first wastes
+your own credibility, the second is checked.
+
+The whole call must be valid JSON on one line. The system runs the script and returns its
+output, and then you give your actual reply. At most ${MAX_TOOLCALLS} runs before each turn.
+
+Use it when a number would settle something — especially to check a projection of your own
+instead of merely asserting it. Anything the tool returns is \`[COMPUTED]\`, never
+\`[GROUNDED]\`: it was calculated just now, it is not a finding in your knowledge base. Every
+run is logged with an id (\`R1\`, \`R2\`, …) that you must cite when you report the number, and
+that anyone else at the table may cite too.
+
+If the card states CONDITIONS, they bind you. Before reporting a computed number, check the
+arguments you passed against them; if any of them falls outside, say so in the same breath as
+the number rather than reporting it plainly. A tool that runs is not a tool that applies.
+` : ""}
+
+# Lookup protocol
+The profile is only a summary. Whenever you need a **specific number, experimental condition, exact wording, or the detail of a particular section**, do not reconstruct it from memory — look it up first.
+
+To look something up, reply with **lookup lines only, and do not speak in the same reply**:
+@lookup: keyword phrase
+@lookup: §3
+At most 3 lines. The system will return the matching passages from your knowledge base, and then you give your actual reply.
+You may look up at most ${MAX_LOOKUPS} times before each turn. If the profile already covers it, just speak.
+
+${instrumentRoster(me.sid)}${ledgerBlock()}
+# Hard rules
+
+1. **The moderator outranks everything.** Messages tagged \`[MODERATOR]\` come from the person who convened this dialogue. They take priority over everything else, including whatever you were about to say. You must respond directly to the moderator's latest message and steer the discussion the way it points. Do not ignore it, do not talk around it, and do not acknowledge it in one sentence and then return to your previous line of argument.
+
+2. **Only your own knowledge base.** Every specific number, condition and conclusion must come from the profile above or from a lookup. Do not invent anything that is not in it. Do not pretend to know the details of the other participants' sources — you only know what they say out loud.
+
+3. **Tag every substantive claim by answering two independent questions.**
+
+   **First — how was the number produced?** Exactly one of:
+   - \`[GROUNDED]\` — it is in your knowledge base. A \`@lookup\` result is \`[GROUNDED]\`, never \`[COMPUTED]\`.
+   - \`[COMPUTED from R3]\` — you ran a method. Always cite the run.
+   - \`[EXTENDED]\` — no calculation; you are projecting from your method or framework. State the assumption that makes the projection travel, and the condition under which it stops.
+
+   **Second — did anything you invented go into it?** If yes, put \`[ASSUMED]\` **in front**:
+   \`[ASSUMED][COMPUTED from R7]\` is the normal shape for a number computed on a value nobody
+   has established. \`[ASSUMED][EXTENDED]\` is a projection resting on an invented premise.
+   \`[ASSUMED][GROUNDED]\` does not exist — nothing taken from your source was invented.
+
+   You do not decide this second question freely. The system reads it off your \`@tool\` call:
+   any argument marked \`assumed\`, any \`src\` it could not verify, and any value inherited from
+   a run that was itself ASSUMED, all make the run ASSUMED, and you will be told so before you
+   speak. Reporting such a number without \`[ASSUMED]\` is the one failure this experiment is
+   built to catch.
+
+   When you write \`[ASSUMED]\`, say in the same sentence: which quantity, the value you used,
+   where that value came from, and why it might not transfer to this case. Without those four
+   it is not a tag, it is a disclaimer.
+
+   Tag every claim, without exception. This is the core thing the experiment is measuring.
+
+4. **An \`[ASSUMED]\` number is not finished until you have tested it.** Run your tool again with the assumed quantity at a different, equally defensible value, and report whether your conclusion changes. If it does, the conclusion is the sensitivity, not the number. You have ${MAX_TOOLCALLS} runs per turn — that is what they are for.
+
+5. **You may refuse.** If the value you would have to assume is one your work gives you no basis for, saying so is a complete answer: "My method produces a marginal at monthly, balancing-authority resolution; the incremental-load marginal this needs is a different quantity, and I will not manufacture it." Abstaining and assuming-with-a-declared-sensitivity are both acceptable. Assuming silently is not.
+
+6. **Keep it short — under 180 words per turn.**
+
+7. If you genuinely have nothing to contribute on the current point, say so plainly: "My knowledge base offers no evidence on this." That is a legitimate and welcome answer. Do not manufacture content to fill the turn.
+
+8. Address the others by name when you agree, disagree or build on what they said. This is a discussion, not a series of statements. If another participant made an \`[EXTENDED]\` claim that falls inside **your** field, adjudicate it before you move on — that is your job at this table, and nobody else can do it.
+
+9. Output only the body of your reply. No "[${me.name}]" prefix, no meta-commentary, no restating these rules.
+
+# Topic of this dialogue
+${S.topic}`;
+}
+
+/* ══════════════════════════════════════════════
+   Message assembly: everyone sees the full history,
+   every message tagged with its source. The running
+   summary goes last, right before the cue to speak.
+   ══════════════════════════════════════════════ */
+function labelOf(m){ return m.source === "M" ? "MODERATOR" : m.name; }
+
+function buildMessages(sid, secs){
+  const me = cfg(sid);
+  const others = S.roster.filter(x => x !== sid).map(cfg);
+  const msgs = [{role:"system", content: systemPrompt(me, others, secs)}];
+
+  for(const m of S.history){
+    if("QSIT".includes(m.source)) continue;
+    if(m.source === sid) msgs.push({role:"assistant", content: m.text});
+    else                 msgs.push({role:"user",      content: `[${labelOf(m)}] ${m.text}`});
+  }
+
+  const cue = S.history.filter(m => m.source === "M" || S.roster.includes(m.source)).length === 0
+    ? `[MODERATOR] We are starting. Give your opening remarks on the topic: "${S.topic}".`
+    : `It is your turn, ${me.name}. Please respond.`;
+
+  // The running summary sits at the very end — closest to the point of generation,
+  // where a model weighs it most heavily.
+  //
+  // This slot was emptied once and then restored, and the reasoning is worth keeping
+  // because it is not settled. The case for removing it: the full history is already
+  // in the messages above, so the summary is a compressed restatement of what the
+  // model can see anyway, placed where it counts most — which makes repeating it the
+  // cheapest safe turn. Worse, the summary carries forward anything the moderator was
+  // asked for and has not answered, so in one early run a question addressed to a seat
+  // that never speaks came back in front of both scientists every round and was asked
+  // again, four times.
+  //
+  // The case for keeping it, which won: that loop did not recur in later runs that
+  // still injected the summary, once the topic gave the seats permission to assume —
+  // so the loop was probably caused by the topic, not by this line. The one run with
+  // the summary removed circled earlier, not later. And the unresolved-item tracking
+  // earns its place when a human is actually moderating, because it is the only thing
+  // that keeps "what was asked and never answered" in view.
+  //
+  // The honest position is that the single-variable comparison was never completed:
+  // the first attempt did not reach the browser, the second changed the knowledge
+  // bases at the same time. Do not present either setting as optimised.
+  msgs.push({role:"user", content: S.summary
+    ? `[MODERATOR — running summary of the discussion so far]\n${S.summary}\n\n${cue}`
+    : cue});
+
+  return msgs;
+}
+
+/* ══════════════════════════════════════════════
+   Rendering
+   ══════════════════════════════════════════════ */
+const esc = s => String(s).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+
+function render(text){
+  return esc(text)
+    .replace(/\[GROUNDED\]/gi,  '<span class="tag base">GROUNDED</span>')
+    // EXTRAPOLATED is the old name for EXTENDED; imported transcripts still carry it
+    .replace(/\[EXTRAPOLATED\]/gi, '<span class="tag ext">EXTENDED</span>')
+    .replace(/\[EXTENDED\]/gi,  '<span class="tag ext">EXTENDED</span>')
+    .replace(/\[ASSUMED\]/gi,   '<span class="tag assm">ASSUMED</span>')
+    .replace(/\[COMPUTED(\s+from\s+)(R\d+(?:\s*,\s*R\d+)*)\]/gi,
+             (m,_f,ids) => `<span class="tag comp">COMPUTED <span class="rid">${ids.replace(/\s+/g,"")}</span></span>`)
+    .replace(/\[COMPUTED\]/gi,   '<span class="tag comp">COMPUTED</span>');
+}
+
+function hhmm(){
+  const d = new Date();
+  return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+}
+
+function bubble(cls, name, text, before){
+  $("empty").style.display = "none";
+  const el = document.createElement("div");
+  el.className = "msg " + cls;
+  el.innerHTML = `<div class="who">${esc(name)}<span class="t">${hhmm()}</span></div>
+                  <div class="body">${render(text)}</div>`;
+  if(before) $("transcript").insertBefore(el, before);
+  else       $("transcript").appendChild(el);
+  el.scrollIntoView({behavior:"smooth", block:"end"});
+  return el;
+}
+
+function sciBubble(sid, name, text, before){
+  return bubble("s " + colorOf(sid), name, text, before);
+}
+
+function lookupBubble(name, queries, got, before){
+  const el = document.createElement("div");
+  el.className = "msg Q";
+  el.innerHTML = `<details><summary>🔍 ${esc(name)} looked up: ${esc(queries.join("   /   "))}</summary>
+                  <pre>${esc(got)}</pre></details>`;
+  if(before) $("transcript").insertBefore(el, before);
+  else       $("transcript").appendChild(el);
+  return el;
+}
+
+function toolBubble(name, call, out, before, rid, j){
+  const el = document.createElement("div");
+  el.className = "msg Q tool";
+  const mark = j && j.assumed ? ` <span class="tag assm">ASSUMED</span>` : "";
+  el.innerHTML = `<details><summary>⚙ ${rid ? `<b>${esc(rid)}</b> · ` : ""}${esc(name)} ran the tool: ${esc(call)}${mark}</summary>
+                  ${j && j.why && j.why.length ? `<pre class="whypre">${esc(j.why.join("\n"))}</pre>` : ""}
+                  <pre>${esc(out)}</pre></details>`;
+  if(before) $("transcript").insertBefore(el, before);
+  else       $("transcript").appendChild(el);
+  return el;
+}
+
+function push(source, name, text, extra, rid){
+  S.history.push({source, name, text, extra, rid, round:S.round, ts:new Date().toISOString()});
+}
+
+/* ══════════════════════════════════════════════
+   Mechanical checks.
+
+   A model will say it followed a rule without following it. These are the cheap, purely
+   syntactic tests that catch the cases where the claim and the record disagree. The flags
+   are not a failure of the run — they are its data: they say whether the constraint
+   actually bound, which is the question worth reporting either way.
+   ══════════════════════════════════════════════ */
+function checkTurn(name, text, toolruns, before){
+  const f = [];
+  const has = t => new RegExp("\\[" + t, "i").test(text);
+  const computed = [...text.matchAll(/\[COMPUTED(?:\s+from\s+(R\d+(?:\s*,\s*R\d+)*))?\]/gi)];
+
+  if(computed.length && toolruns === 0 && !computed.some(m => m[1]))
+    f.push({code:"C1", note:"tagged [COMPUTED] but ran no tool this turn and cited no earlier run"});
+  if(has("ASSUMED") && toolruns < 2)
+    f.push({code:"C2", note:`tagged [ASSUMED] after ${toolruns} tool run${toolruns===1?"":"s"} — the assumed value was never varied`});
+  if(!has("GROUNDED") && !has("COMPUTED") && !has("ASSUMED") && !has("EXTENDED") && !has("EXTRAPOLATED")
+     && text.trim().length > 120)
+    f.push({code:"C3", note:"no tag anywhere in the turn"});
+  const uncited = computed.filter(m => !m[1]).length;
+  if(uncited && S.ledger.length)
+    f.push({code:"C4", note:`${uncited} [COMPUTED] claim${uncited===1?"":"s"} with no [R…] reference`});
+
+  // C5 is exact, and it is the reason argument provenance exists: whether a run rests on an
+  // invented input is a fact about the call, not a choice made while narrating the answer.
+  const cited = new Set();
+  for(const m of computed) if(m[1]) for(const id of m[1].split(/\s*,\s*/)) cited.add(id.trim().toUpperCase());
+  const tainted = [...cited].filter(id => {
+    const e = S.ledger.find(x => x.id.toUpperCase() === id);
+    return e && e.assumed;
+  });
+  if(tainted.length && !has("ASSUMED"))
+    f.push({code:"C5", note:`reported ${tainted.join(", ")} as [COMPUTED] without [ASSUMED] — `
+      + `${tainted.length === 1 ? "that run rests" : "those runs rest"} on a value nobody established`});
+
+  for(const x of f) S.flags.push({round:S.round, name, ...x});
+  if(f.length && before){
+    const d = document.createElement("div");
+    d.className = "flags";
+    d.innerHTML = f.map(x => `<b>${x.code}</b> ${esc(x.note)}`).join("<br>");
+    before.appendChild(d);
+  }
+  return f;
+}
+
+function setStatus(msg){
+  const label = {idle:"idle", running:"running", paused:"paused · waiting for moderator", stopped:"stopped"}[S.status];
+  const half = S.nextIdx > 0 && S.nextIdx < S.roster.length ? ` · ${S.nextIdx}/${S.roster.length} spoken` : "";
+  $("status").innerHTML = `${msg || label} · round <b>${S.round}</b>${half}`;
+  const running = S.status === "running", paused = S.status === "paused";
+  $("btn-start").disabled  = running || paused;
+  $("btn-resume").disabled = !paused;
+  $("btn-stop").disabled   = !running && !paused;
+  $("btn-import").disabled = running || paused;
+  $("modinput").disabled   = !paused;
+  $("btn-send").disabled   = !paused;
+  $("modline").classList.toggle("on", paused);
+  refreshRoster();
+  if(paused) $("modinput").focus();
+}
+
+/* ══════════════════════════════════════════════
+   Backend call
+   ══════════════════════════════════════════════ */
+/* `ctl` is whoever owns the right to cancel this request. The dialogue owns S; the help
+   overlay owns HELP, because it can be opened mid-round and its Stop must not kill a turn
+   the roundtable is in the middle of — nor the other way round. */
+async function call(c, messages, maxTokens, ctl){
+  ctl = ctl || S;
+  ctl.abort = new AbortController();
+  try{
+    const r = await fetch("/api/chat", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      signal: ctl.abort.signal,
+      body: JSON.stringify({
+        base_url:c.base, model:c.model, api_key:c.key,
+        messages, temperature:TEMPERATURE, max_tokens:maxTokens,
+      }),
+    });
+    const data = await r.json();
+    if(!r.ok) throw new Error(data.error || ("HTTP " + r.status));
+    return data.content || "";
+  }catch(e){
+    if(e instanceof TypeError)      // "Failed to fetch" = never reached app.py
+      throw new Error("cannot reach the backend. Is app.py still running, and is the "
+        + "address bar showing http://127.0.0.1:8000 (not a file:// path)? "
+        + "A system-wide proxy that does not bypass 127.0.0.1 will also do this.");
+    throw e;
+  }finally{
+    ctl.abort = null;
+  }
+}
+
+async function callTool(c, args){
+  const r = await fetch("/api/tool", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({filename: c.scriptname || "tool.py", script: c.script,
+                          runtime: c.toolrt || "python", args}),
+  });
+  return await r.json();
+}
+
+/* ══════════════════════════════════════════════
+   Argument provenance.
+
+   Every argument declares where its value came from. This exists because the previous
+   design left one degree of freedom open: the agent chose its own tag, so a number
+   computed on an invented input could be reported as [COMPUTED] and nothing anywhere
+   could tell. Now the tag is DERIVED from the call, not chosen after it.
+
+   Three sources, and the asymmetry is the point:
+     "R7"       verifiable exactly — the value must appear in what R7 returned
+     "source"   weakly checkable — the knowledge base, this turn's lookups, or the transcript
+     "assumed"  needs no check; nobody lies in this direction
+
+   A bare value with no wrapper is recorded as assumed. That is the conservative reading,
+   it keeps every older card and transcript working, and it makes laziness loud instead of
+   silent: skipping the wrapper marks you as assuming, which is the safe direction to fail.
+   ══════════════════════════════════════════════ */
+function normArgs(obj){
+  const args = {}, src = {}, bare = [];
+  for(const [k, v] of Object.entries(obj)){
+    if(v && typeof v === "object" && !Array.isArray(v) && "v" in v){
+      args[k] = v.v;
+      src[k] = String(v.src ?? "assumed").trim() || "assumed";
+    }else{
+      args[k] = v; src[k] = "assumed"; bare.push(k);
+    }
+  }
+  return {args, src, bare};
+}
+
+/* Does this literal actually occur in that text?
+
+   Substring matching is useless here — "2" occurs in almost any document, so it would wave
+   through every small number. Match on a NUMBER BOUNDARY instead: the value has to stand as
+   its own token, not as a fragment of a longer figure. Several renderings are tried, because
+   a paper writes 0.5 as 0.5, .5 or 5.0e-1 and all three mean the same thing. */
+function appears(hay, v){
+  const text = String(hay);
+  if(typeof v !== "number") return text.includes(String(v));
+  const forms = new Set([String(v), v.toPrecision(2), v.toPrecision(3), v.toFixed(0),
+                         v.toFixed(1), v.toFixed(2), v.toExponential(1),
+                         v.toLocaleString("en-US")]);
+  for(const f of forms){
+    // only renderings that still MEAN the same number: toFixed(0) turns 0.5 into "1",
+    // and "1" then matches the "1" in "h-1" — a rounding artefact, not a citation
+    if(!f || Number(f.replace(/,/g, "")) !== v) continue;
+    const esc = f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // not preceded or followed by another digit / decimal point
+    if(new RegExp(`(?<![\\d.])${esc}(?![\\d.])`).test(text)) return true;
+  }
+  return false;
+}
+
+function checkSrc(val, src, me, retrieved){
+  if(/^assumed$/i.test(src)) return {kind: "assumed"};
+  const m = /^R(\d+)$/i.exec(src.trim());
+  if(m){
+    const e = S.ledger[+m[1] - 1];
+    if(!e || !e.ok)  return {kind: "unverified", why: `${src} is not a successful run on the table`};
+    if(!appears(e.ret, val))
+      return {kind: "unverified", why: `${val} does not appear in ${e.id}'s return ${e.ret}`};
+    return {kind: "sourced", via: e.id, tainted: !!e.assumed};
+  }
+  const hay = (me.dossier || "") + "\n" + (retrieved || "") + "\n"
+            + S.history.filter(h => h.source !== "T").map(h => h.text).join("\n");
+  return appears(hay, val) ? {kind: "sourced"}
+    : {kind: "unverified", why: `${val} was not found in your profile, this turn's lookups, or the transcript`};
+}
+
+/* Runs the whole argument map and decides what this call IS, before it is even executed. */
+function judgeArgs(args, src, me, retrieved){
+  const prov = {}, why = [], via = [];
+  let assumed = false;
+  for(const [k, v] of Object.entries(args)){
+    const r = checkSrc(v, src[k], me, retrieved);
+    prov[k] = {src: src[k], ...r};
+    if(r.kind !== "sourced"){
+      assumed = true;
+      why.push(`${k}: ${r.why || "declared assumed by the caller"}`);
+    }
+    if(r.via){ via.push(r.via); if(r.tainted){ assumed = true; why.push(`${k}: inherited from ${r.via}, which was itself ASSUMED`); } }
+  }
+  return {prov, assumed, why, via};
+}
+
+/* Did the model ask to run its tool instead of speaking? */
+function parseTool(text){
+  const m = text.match(/^\s*@tool\s*:\s*(\{[\s\S]*?\})\s*$/m);
+  if(!m) return null;
+  const rest = text.replace(/^\s*@tool\s*:.*$/gm, "").trim();
+  if(rest.length > 40) return null;          // it both ran the tool and spoke
+  try{
+    const obj = JSON.parse(m[1]);
+    return {...normArgs(obj), raw: m[1]};
+  }catch(e){ return {bad: m[1]}; }
+}
+
+/* Is this reply a lookup request rather than a turn? */
+function parseLookup(text){
+  const qs = [...text.matchAll(/^\s*@lookup\s*:\s*(.+?)\s*$/gim)].map(m => m[1]);
+  if(!qs.length) return null;
+  const rest = text.replace(/^\s*@lookup\s*:.*$/gim, "").trim();
+  if(rest.length > 40) return null;      // it both looked up and spoke — take the speech
+  return qs.slice(0, 3);
+}
+
+function formatToolResult(res){
+  if(res.ok){
+    const body = res.not_json ? res.raw : JSON.stringify(res.result, null, 1);
+    return body + `\n\n(ran in ${res.seconds}s)` + (res.stderr ? `\nstderr: ${res.stderr}` : "");
+  }
+  // Errors go back to the model verbatim: wrong argument names are the common failure,
+  // and it can only fix them if it sees what actually happened.
+  return `THE TOOL FAILED: ${res.error}`
+    + (res.stderr ? `\n\nstderr:\n${res.stderr}` : "")
+    + (res.stdout ? `\n\nstdout:\n${res.stdout}` : "")
+    + `\n\nCheck the parameter names and units on your tool card. You may try once more, or `
+    + `carry on without the number and say that the calculation did not run.`;
+}
+
+/* ══════════════════════════════════════════════
+   One turn (lookup and tool round-trips)
+   ══════════════════════════════════════════════ */
+async function speak(sid){
+  const me = cfg(sid);
+  const secs = splitSections(me.paper);
+  const msgs = buildMessages(sid, secs);
+
+  const el = sciBubble(sid, me.name, "");
+  el.querySelector(".body").innerHTML = '<span class="thinking">thinking…</span>';
+
+  let lookups = 0, toolruns = 0, lastRetrieved = "";
+  try{
+    for(let attempt = 0; attempt < MAX_LOOKUPS + MAX_TOOLCALLS + 4; attempt++){
+      if(S.status !== "running"){ el.remove(); return false; }
+      const text = await call(me, msgs, MAX_TOKENS);
+
+      const tl = (me.script && me.toolcard) ? parseTool(text) : null;
+      if(tl && tl.bad){
+        msgs.push({role:"assistant", content:text});
+        msgs.push({role:"user", content:
+          `That @tool line was not valid JSON: ${tl.bad}\nEmit exactly one line of the form `
+          + `@tool: {"key": {"v": value, "src": "R7"|"source"|"assumed"}} — double quotes, no `
+          + `trailing comma, all on one line.`});
+        continue;
+      }
+      if(tl && toolruns < MAX_TOOLCALLS){
+        toolruns++;
+        el.querySelector(".body").innerHTML = '<span class="thinking">running the tool…</span>';
+        // the call is judged BEFORE it runs: what this number will be is a property of
+        // its inputs, not of how the answer is later narrated
+        const j    = judgeArgs(tl.args, tl.src, me, lastRetrieved);
+        const res  = await callTool(me, tl.args);
+        const show = formatToolResult(res);
+        const e    = ledgerEntry(me.name, me.scriptname || "tool", tl.args, res, me.toolcard, j);
+        toolBubble(me.name, tl.raw, show, el, e.id, j);
+        push("T", me.name, `ran the tool: ${tl.raw}`, show, e.id);
+        el.querySelector(".body").innerHTML = '<span class="thinking">thinking…</span>';
+
+        const verdict = j.assumed
+          ? `**This run is ASSUMED.** ${j.why.join("; ")}\n`
+            + `Report it as [ASSUMED][COMPUTED from ${e.id}], and in the same sentence name the `
+            + `quantity, the value you used, where that value came from, and why it may not `
+            + `transfer here. Then run again with that quantity at a different, equally `
+            + `defensible value and say whether your conclusion moves.`
+          : `Every argument was sourced, so report it as [COMPUTED from ${e.id}].`;
+        const nudge = tl.bare.length
+          ? `\n\nYou sent ${tl.bare.length} bare value${tl.bare.length===1?"":"s"} `
+            + `(${tl.bare.join(", ")}) with no \`src\`, so ${tl.bare.length===1?"it was":"they were"} `
+            + `recorded as assumed. If any of them does have a source, send it again as `
+            + `{"v": …, "src": "R…"|"source"}.`
+          : "";
+        msgs.push({role:"assistant", content:text});
+        msgs.push({role:"user", content:
+          `[TOOL RESULT — logged as ${e.id}]\n${show}\n\n`
+          + `provenance: ${provLine(e) || "(none declared)"}\n\n${verdict}${nudge}\n\n`
+          + `You may run the tool again (${MAX_TOOLCALLS - toolruns} left); otherwise give your reply now.`});
+        continue;
+      }
+      if(tl){
+        msgs.push({role:"assistant", content:text});
+        msgs.push({role:"user", content:"You have used all your tool runs. Reply now with what you have."});
+        continue;
+      }
+
+      const qs = parseLookup(text);
+
+      if(qs && lookups < MAX_LOOKUPS){
+        lookups++;
+        const got = excerpt(secs, qs);
+        lastRetrieved += "\n" + got;      // a "source" claim may point at this
+        lookupBubble(me.name, qs, got, el);
+        push("Q", me.name, "looked up: " + qs.join(" / "), got);
+        msgs.push({role:"assistant", content:text});
+        msgs.push({role:"user", content:
+          `[SOURCE EXCERPT]\n${got}\n\nThat is what your knowledge base actually says. Now give your reply. Do not emit @lookup again.`});
+        continue;
+      }
+      if(qs){
+        msgs.push({role:"assistant", content:text});
+        msgs.push({role:"user", content:"You have used all your lookups. Reply now with what you have."});
+        continue;
+      }
+
+      el.querySelector(".body").innerHTML = render(text);
+      push(sid, me.name, text);
+      checkTurn(me.name, text, toolruns, el);
+      return true;
+    }
+    throw new Error("kept requesting lookups or tool runs without ever replying");
+  }catch(e){
+    el.remove();
+    if(e.name === "AbortError") return false;
+    S.status = "stopped"; setStatus();
+    bubble("S", "Error", `${me.name}: ${e.message}`);
+    return false;
+  }
+}
+
+/* ══════════════════════════════════════════════
+   Dialogue loop — fixed order, one round = everyone once
+   ══════════════════════════════════════════════ */
+async function loop(){
+  while(S.status === "running"){
+    while(S.nextIdx < S.roster.length){
+      if(S.status !== "running") return;
+      if(!await speak(S.roster[S.nextIdx])) return;
+      S.nextIdx++;
+      setStatus();
+    }
+    S.nextIdx = 0;
+    S.round++;
+    setStatus("updating summary");
+    await updateSummary();
+    if(S.status !== "running") return;
+    setStatus();
+
+    const n = Math.max(1, parseInt($("pauseEvery").value) || 2);
+    if(S.round % n === 0){
+      S.status = "paused"; setStatus();
+      return;
+    }
+  }
+}
+
+/* ══════════════════════════════════════════════
+   Buttons
+   ══════════════════════════════════════════════ */
+async function ready(){
+  await loadSlots();                     // the Set API tab may have changed it a moment ago
+  if(S.roster.length < MIN_SCI){ alert("At least two scientists are needed."); return false; }
+  if(S.roster.length > seatCapacity()){
+    alert(`Not enough API slots.\n\n${S.roster.length} scientists are seated but api.json only `
+      + `has ${seatCapacity()} usable slot${seatCapacity() === 1 ? "" : "s"} for them.\n\n`
+      + `Open "Set API" and add one, or remove a seat.`);
+    return false;
+  }
+  for(const sid of S.roster){
+    const c = cfg(sid);
+    if(!c.base || !c.model){ alert(`${c.name} has no usable API in slot ${idx(sid) + 1}. `
+      + `Fill it in on "Set API".`); return false; }
+    if(!c.paper){ alert(`${c.name} has no knowledge base. Load the .md into the card — `
+      + `an imported transcript does not carry the knowledge bases.`); return false; }
+  }
+  // Not onboarded is a legitimate way to run — everything has to be looked up — but it should
+  // be a choice. Left silent, an empty profile reads to the model as "you distilled nothing",
+  // and the gap gets filled from general knowledge and tagged [GROUNDED].
+  const bare = S.roster.map(cfg).filter(c => !c.dossier).map(c => c.name);
+  if(bare.length && !confirm(
+      `${bare.join(" and ")} ${bare.length === 1 ? "has" : "have"} not been onboarded.\n\n`
+      + `Without a profile ${bare.length === 1 ? "it" : "they"} can only cite what a @lookup `
+      + `returns, and will be told so explicitly. That is a valid way to run — but if you meant `
+      + `to press Onboard first, stop here.\n\nStart anyway?`)) return false;
+  return true;
+}
+
+$("btn-start").onclick = async () => {
+  const topic = $("topic").value.trim();
+  if(!topic) return alert("Enter a topic first.");
+  if(!await ready()) return;
+
+  S.topic = topic; S.history = []; S.round = 0; S.nextIdx = 0; S.summary = "";
+  $("summary").value = "";
+  $("transcript").innerHTML = '<div class="empty" id="empty" style="display:none"></div>';
+  bubble("I", "Topic", topic + `  ·  ${S.roster.length} scientists, fixed order: `
+    + S.roster.map(s => cfg(s).name).join(" → "));
+  S.status = "running"; setStatus();
+
+  try{
+    for(const sid of S.roster){
+      if(!cfg(sid).dossier || $(sid+"-phash").value !== hash(cfg(sid).paper)){
+        setStatus(`onboarding ${cfg(sid).name}`);
+        bubble("I", "Onboarding", `${cfg(sid).name} is reading their knowledge base…`);
+        await runDossier(sid);
+      }
+    }
+  }catch(e){
+    S.status = "stopped"; setStatus();
+    bubble("S", "Error", "onboarding failed: " + e.message);
+    return;
+  }
+  setStatus();
+
+  await loop();
+  setStatus();
+};
+
+$("btn-resume").onclick = async () => {
+  if(S.status !== "paused") return;
+  if(!await ready()) return;
+  S.status = "running"; setStatus();
+  await loop();
+  setStatus();
+};
+
+$("btn-stop").onclick = () => {
+  S.status = "stopped";
+  if(S.abort) S.abort.abort();
+  setStatus();
+};
+
+$("btn-send").onclick = async () => {
+  const t = $("modinput").value.trim();
+  if(!t) return;
+  push("M", "MODERATOR", t);
+  bubble("M", "MODERATOR", t);
+  $("modinput").value = "";
+  if(S.status === "paused"){
+    S.status = "running"; setStatus();
+    await loop();
+    setStatus();
+  }
+};
+
+$("topic").addEventListener("input", drawRing);
+
+$("modinput").addEventListener("keydown", e => {
+  if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); $("btn-send").click(); }
+});
+
+$("btn-modpanel").onclick = () => {
+  const box = $("summaryline"), showing = box.hidden;
+  box.hidden = !showing;
+  $("btn-modpanel").classList.toggle("on", showing);
+};
+
+/* ══════════════════════════════════════════════
+   Export / Import
+   ══════════════════════════════════════════════ */
+$("btn-export").onclick = () => {
+  if(!S.history.filter(m => m.source === "M" || S.roster.includes(m.source)).length)
+    return alert("Nothing to export yet.");
+  const L = [`# Dialogue: ${S.topic}`, "", `- Date: ${new Date().toLocaleString()}`];
+  S.roster.forEach((sid, i) => {
+    const c = cfg(sid);
+    L.push(`- Scientist ${i+1}: ${c.name} (${c.field}) · ${c.model}`);
+  });
+  L.push(`- Rounds completed: ${S.round} (paused every ${$("pauseEvery").value})`, "", "---", "");
+
+  for(const m of S.history){
+    if(m.source === "S" || m.source === "I") continue;
+    if(m.source === "Q"){ L.push(`> 🔍 ${m.name} ${m.text}`, ""); continue; }
+    if(m.source === "T"){
+      L.push(`> ⚙ ${m.rid ? "**" + m.rid + "** · " : ""}${m.name} ${m.text}`, "");
+      if(m.extra) L.push("> ```", ...String(m.extra).split("\n").map(l => "> " + l), "> ```", "");
+      continue;
+    }
+    L.push(`### ${labelOf(m)}`, "", m.text, "");
+  }
+
+  L.push("---", "", "## Appendix: moderator running summary", "", S.summary || "(none)", "",
+         "## Appendix: scientist profiles", "");
+  for(const sid of S.roster){
+    const c = cfg(sid);
+    L.push(`### ${c.name}`, "", c.dossier || "(none)", "");
+  }
+  if(S.ledger.length){
+    L.push("## Appendix: result ledger", "",
+           "Every tool run in the dialogue. This is what a `[COMPUTED from R…]` reference points at.", "",
+           "| id | round | who | tool | arguments | where each value came from | assumed? | returned |",
+           "|----|-------|-----|------|-----------|-----------------------------|----------|----------|");
+    for(const e of S.ledger)
+      L.push(`| ${e.id} | ${e.round} | ${e.owner} | ${e.tool} | \`${JSON.stringify(e.args)}\` | `
+           + `${provLine(e) || "—"} | ${e.assumed ? "**yes**" : "no"} | `
+           + `${e.ok ? "`" + e.ret + "`" : "**failed** — " + e.error} |`);
+    L.push("");
+    const tainted = S.ledger.filter(e => e.assumed && e.ok);
+    if(tainted.length){
+      L.push("Runs resting on a value nobody established, and why:", "");
+      for(const e of tainted) L.push(`- **${e.id}** — ${e.why.join("; ") || "an argument was declared assumed"}`);
+      L.push("");
+    }
+  }
+
+  L.push("## Appendix: mechanical checks", "");
+  if(S.flags.length){
+    L.push("Turns where what was claimed and what was recorded disagree. These are data, not",
+           "defects: they say whether the tagging discipline actually bound.", "",
+           "| round | who | check | what failed |", "|-------|-----|-------|--------------|");
+    for(const f of S.flags) L.push(`| ${f.round} | ${f.name} | ${f.code} | ${f.note} |`);
+  }else{
+    L.push("No check failed.",
+           "(C1 `[COMPUTED]` with no run and no citation · C2 `[ASSUMED]` without a second run ·",
+           "C3 an untagged turn · C4 `[COMPUTED]` with no `[R…]` reference ·",
+           "C5 a run that rests on an invented input reported without `[ASSUMED]`.)");
+  }
+  L.push("");
+
+  L.push("## Appendix: adjudication — to be filled in by hand", "",
+         "One row per substantive claim. The tag is what the agent asserted; the last two columns",
+         "are the judgement no model can make for you.", "",
+         "| # | round | speaker | tag | claim | basis shown | tag correct? | note |",
+         "|---|-------|---------|-----|-------|-------------|--------------|------|");
+  let n = 0;
+  for(const m of S.history){
+    if(!S.roster.includes(m.source)) continue;
+    const tags = [...String(m.text).matchAll(/\[(GROUNDED|COMPUTED[^\]]*|ASSUMED|EXTENDED|EXTRAPOLATED)\]/gi)];
+    for(const t of tags){
+      const at = t.index, from = String(m.text).slice(Math.max(0, at - 130), at)
+        .replace(/\s+/g, " ").replace(/\|/g, "\\|").trim();
+      L.push(`| ${++n} | ${m.round ?? ""} | ${m.name} | ${t[1].toUpperCase()} | …${from} | | | |`);
+    }
+  }
+  if(!n) L.push("| | | | | *(no tagged claims)* | | | |");
+  L.push("");
+
+  if(S.roster.some(sid => cfg(sid).toolcard)){
+    L.push("## Appendix: tool cards", "");
+    for(const sid of S.roster){
+      const c = cfg(sid);
+      if(c.toolcard) L.push(`### ${c.name}`, "", "```", c.toolcard, "```",
+                            `(script: ${c.scriptname || "unnamed"})`, "");
+    }
+  }
+
+  /* ── Seat configuration ────────────────────────────────────────────────────
+     What a blank page needs to rebuild these seats. The tool is recorded by
+     NAME, not by source: on import the script and its specification are read
+     back out of tools/, which is the live copy and cannot drift from what the
+     tool actually is. The knowledge base is included in full, because without
+     it @lookup has nothing to search and the seat is not really restored.
+
+     This section goes LAST and its knowledge bases are fenced by HTML comments,
+     because a knowledge base is arbitrary markdown — headings, tables, code
+     fences — and any heading-based parser would stop in the middle of one.
+
+     API slots are deliberately absent. They live in api.json. */
+  L.push("## Appendix: seat configuration", "",
+         "Everything needed to rebuild these seats on a blank page, except the API slots,",
+         "which live in `api.json` and are never written into an export.", "");
+  for(const sid of S.roster){
+    const c = cfg(sid);
+    L.push(`### ${c.name}`, "",
+           `- field: ${c.field}`,
+           `- model: ${c.model || "(not configured)"}`,
+           `- tool: ${c.toolsrc      ? c.toolsrc + " (from tools/)"
+                    : c.scriptname   ? c.scriptname + " (uploaded, not in tools/)"
+                    :                  "(none)"}`,
+           `- runtime: ${c.toolrt || "python"}`,
+           `- knowledge base: ${c.paper.length} chars`, "");
+    if(c.paper) L.push("<!--kb:start-->", c.paper, "<!--kb:end-->", "");
+  }
+
+  const blob = new Blob([L.join("\n")], {type:"text/markdown;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  const stamp = new Date().toISOString().slice(0,16).replace(/[:T]/g,"-");
+  a.download = `dialogue-${S.topic.slice(0,30).replace(/[^\w -]/g,"")}-${stamp}.md`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+function parseTranscript(md){
+  const parts = md.split(/\n-{3,}\s*\n+(?=##\s*Appendix)/);
+  const head = parts[0], appendix = parts.slice(1).join("\n");
+  const out = {topic:"", round:0, msgs:[], people:[], profiles:{},
+               toolcards:{}, seats:{}, summary:""};
+
+  const mt = head.match(/^#\s*Dialogue:\s*(.+)$/m);
+  if(mt) out.topic = mt[1].trim();
+  const mr = head.match(/^-\s*Rounds completed:\s*(\d+)/m);
+  if(mr) out.round = parseInt(mr[1]);
+  for(const m of head.matchAll(/^-\s*Scientist\s*\d*\s*[A-Z]?:\s*(.+?)\s*\((.*?)\)\s*·\s*(.+?)\s*$/gm))
+    out.people.push({name:m[1].trim(), field:m[2].trim(), model:m[3].trim()});
+
+  const body = head.split(/\n-{3,}\s*\n/).slice(1).join("\n---\n");
+  let cur = null;
+  const flush = () => {
+    if(cur){
+      const t = cur.text.join("\n").trim();
+      if(t) out.msgs.push({who:cur.who, text:t});
+      cur = null;
+    }
+  };
+  for(const ln of body.split("\n")){
+    const h = ln.match(/^###\s+(.+?)\s*$/);
+    if(h){ flush(); cur = {who:h[1].trim(), text:[]}; continue; }
+    const q = ln.match(/^>\s*🔍\s*(.+?)\s+looked up:\s*(.+?)\s*$/);
+    if(q){ flush(); out.msgs.push({lookup:true, who:q[1].trim(), text:"looked up: " + q[2].trim()}); continue; }
+    // The writer prefixes a tool line with its ledger id: "⚙ **R1** · Name ran the
+    // tool: {…}". That prefix has to come off here, or the id ends up glued to the
+    // front of the speaker's name and no card will match it.
+    const tl = ln.match(/^>\s*⚙\s*(?:\*\*(R\d+)\*\*\s*·\s*)?(.+?)\s+ran the tool:\s*(.+?)\s*$/);
+    if(tl){ flush(); out.msgs.push({tool:true, rid:tl[1] || null, who:tl[2].trim(),
+                                    text:"ran the tool: " + tl[3].trim()}); continue; }
+    if(cur) cur.text.push(ln);
+  }
+  flush();
+
+  const ms = appendix.match(/##\s*Appendix: moderator running summary\s*\n([\s\S]*?)(?=\n##\s|$)/);
+  if(ms && ms[1].trim() !== "(none)") out.summary = ms[1].trim();
+  const section = (title) => {
+    const m = appendix.match(new RegExp("##\\s*Appendix: " + title + "\\s*\\n([\\s\\S]*?)(?=\\n##\\s|$)"));
+    const o = {};
+    if(!m) return o;
+    for(const blk of m[1].split(/^###\s+/m).slice(1)){
+      const nl = blk.indexOf("\n");
+      o[blk.slice(0, nl).trim()] = blk.slice(nl + 1).trim();
+    }
+    return o;
+  };
+  out.profiles  = section("scientist profiles");
+  const cards   = section("tool cards");
+  for(const k in cards){
+    out.toolcards[k] = cards[k].replace(/^```\s*\n?/, "").replace(/\n?```[\s\S]*$/, "").trim();
+  }
+
+  /* Seat configuration is scanned line by line rather than matched by regex. A
+     knowledge base is arbitrary markdown and routinely contains "##" and "###"
+     headings of its own, so any pattern that looks for "the next heading" stops
+     in the middle of one. The <!--kb:start--> / <!--kb:end--> pair is the only
+     boundary that a paper cannot accidentally contain, so everything between
+     them is treated as opaque. The section is written last, so taking it to the
+     end of the file is safe. */
+  const seatBlock = md.split(/^##\s*Appendix: seat configuration\s*$/m)[1];
+  if(seatBlock){
+    let who = null, inKB = false, buf = [];
+    for(const ln of seatBlock.split("\n")){
+      if(inKB){
+        if(ln.trim() === "<!--kb:end-->"){
+          if(who) out.seats[who].paper = buf.join("\n").trim();
+          inKB = false; buf = [];
+        }else buf.push(ln);
+        continue;
+      }
+      if(ln.trim() === "<!--kb:start-->"){ inKB = true; buf = []; continue; }
+      const h = ln.match(/^###\s+(.+?)\s*$/);
+      if(h){ who = h[1].trim(); out.seats[who] = {paper:"", toolsrc:"", upload:"", runtime:""}; continue; }
+      if(!who) continue;
+      const tl = ln.match(/^-\s*tool:\s*(.+?)\s*$/);
+      if(tl){
+        const reg = tl[1].match(/^(.+?)\s*\(from tools\/\)$/);
+        if(reg)                        out.seats[who].toolsrc = reg[1].trim();
+        else if(tl[1] !== "(none)")    out.seats[who].upload  = tl[1].trim();
+        continue;
+      }
+      const rt = ln.match(/^-\s*runtime:\s*(.+?)\s*$/);
+      if(rt) out.seats[who].runtime = rt[1].trim();
+    }
+  }
+  return out;
+}
+
+async function applyTranscript(t){
+  if(!t.msgs.length) return alert("No dialogue turns found in that file. Is it an export from this tool?");
+  if(!t.people.length) return alert("No scientist list found in that file's header.");
+
+  // Match names to existing cards where possible; otherwise rebuild the roster.
+  const have = S.roster.map(sid => cfg(sid).name);
+  const same = have.length === t.people.length && t.people.every((p,i) => p.name === have[i]);
+  if(!same){
+    const keep = S.roster.slice();
+    for(const sid of keep){                       // rebuild from scratch, preserving nothing
+      S.roster.splice(idx(sid), 1);
+      $("card-" + sid).remove();
+    }
+    for(const p of t.people) addScientist({name:p.name, field:p.field, model:p.model});
+    renumber();
+    selectSeat(S.roster[0]);
+  }
+
+  const byName = {};
+  S.roster.forEach(sid => byName[cfg(sid).name] = sid);
+  const src = n => (n === "MODERATOR" ? "M" : (byName[n] || null));
+  const unknown = [...new Set(t.msgs.map(m => m.who).filter(n => !src(n)))];
+  if(unknown.length) return alert("Could not match these speakers to a card: " + unknown.join(", "));
+
+  /* Fill empty fields from the appendices. Order matters: the knowledge base goes
+     in first, because the profile's freshness hash is taken against it; then the
+     tool, because pickTool reads the live spec out of tools/ and writes a better
+     card than the exported one; the exported card is only the fallback. Nothing
+     already filled in on the page is overwritten. */
+  const missing = [];
+  for(const sid of S.roster){
+    const s = t.seats[cfg(sid).name];
+    if(s && s.paper && !cfg(sid).paper) $(sid+"-paper").value = s.paper;
+
+    if(s && s.toolsrc && !cfg(sid).script){
+      try{ await pickTool(sid, s.toolsrc); }catch(e){ /* reported below */ }
+      if(!cfg(sid).script) missing.push(`${cfg(sid).name}: tool "${s.toolsrc}" is not in tools/`);
+    }else if(s && s.upload && !cfg(sid).script){
+      missing.push(`${cfg(sid).name}: tool "${s.upload}" was uploaded, not taken from tools/, `
+                 + `so its script is not in the export — re-upload it`);
+    }
+
+    const c = cfg(sid);
+    if(!c.dossier && t.profiles[c.name]){
+      $(sid+"-dossier").value = t.profiles[c.name];
+      if(c.paper) $(sid+"-phash").value = hash(c.paper);
+    }
+    if(!c.toolcard && t.toolcards[c.name]) $(sid+"-toolcard").value = t.toolcards[c.name];
+    refreshKB(sid);
+  }
+
+  S.topic = t.topic || $("topic").value.trim();
+  $("topic").value = S.topic;
+  S.round   = t.round || 0;
+  S.summary = t.summary || "";
+  $("summary").value = S.summary;
+  S.history = [];
+  $("transcript").innerHTML = '<div class="empty" id="empty" style="display:none"></div>';
+
+  const real  = m => !m.lookup && !m.tool;
+  const nTurn = t.msgs.filter(m => real(m) && src(m.who) !== "M").length;
+  const nMod  = t.msgs.filter(m => real(m) && src(m.who) === "M").length;
+  const nKB   = S.roster.filter(sid => cfg(sid).paper).length;
+  const nTool = S.roster.filter(sid => cfg(sid).script).length;
+  bubble("I", "Imported",
+    `${nTurn} turns and ${nMod} moderator note${nMod === 1 ? "" : "s"} restored · `
+    + `${t.people.length} scientists · round ${t.round}\n`
+    + `${nKB} knowledge base${nKB === 1 ? "" : "s"} and ${nTool} tool${nTool === 1 ? "" : "s"} loaded. `
+    + `API slots are never exported — they come from api.json, so check Set API before starting.\n`
+    + (missing.length ? "\n" + missing.join("\n") + "\n" : "")
+    + `Resume continues from here. Tool outputs and retrieved source text are not stored in an `
+    + `export, and the result ledger is not rebuilt, so a resumed run restarts R-numbering.`);
+
+  for(const m of t.msgs){
+    const w = src(m.who);
+    if(m.lookup){
+      push("Q", m.who, m.text, "(the retrieved source text is not stored in the export)");
+      lookupBubble(m.who, [m.text.replace(/^looked up:\s*/, "")],
+                   "(the retrieved source text is not stored in the export — only the query)");
+    }else if(m.tool){
+      push("T", m.who, m.text, "(the tool output is not stored in the export — only the call)", m.rid);
+      toolBubble(m.who, m.text.replace(/^ran the tool:\s*/, ""),
+                 "(the tool output is not stored in the export — only the call)", null, m.rid);
+    }else if(w === "M"){
+      push("M", "MODERATOR", m.text);
+      bubble("M", "MODERATOR", m.text);
+    }else{
+      push(w, m.who, m.text);
+      sciBubble(w, m.who, m.text);
+    }
+  }
+
+  // Resume with whoever was actually due next
+  const last = [...t.msgs].reverse().find(m => real(m) && src(m.who) !== "M");
+  S.nextIdx = last ? (idx(src(last.who)) + 1) % S.roster.length : 0;
+  S.status  = "paused";
+  setStatus();
+  saveCfg();
+}
+
+$("btn-import").onclick = () => $("importfile").click();
+$("importfile").addEventListener("change", async e => {
+  const f = e.target.files[0]; if(!f) return;
+  try{ await applyTranscript(parseTranscript(await f.text())); }
+  catch(err){ alert("Could not read that file: " + err.message); }
+  e.target.value = "";
+});
+
+/* ══════════════════════════════════════════════
+   README overlay
+   ══════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════
+   How it works — the README, answered.
+
+   The documentation is long, and the thing a person actually wants is one paragraph out of
+   it. So the overlay is a small assistant reading README.md rather than a wall of text — it
+   runs on the MODERATOR's own slot, because that model is already configured, already meant
+   to be small and cheap, and is not one of the scientists. The raw file is one button away
+   for anyone who would rather read it themselves.
+   ══════════════════════════════════════════════ */
+const HELP = {readme: "", msgs: [], busy: false, abort: null};
+const HELP_TOK = 900;
+
+async function openReadme(){
+  $("readme-ov").classList.add("on");
+  const c = modCfg();
+  const ready = !!(c.base && c.model);
+  $("help-input").style.display = ready ? "" : "none";
+  $("help-sub").textContent = ready ? "· asking " + c.model : "";
+
+  if(!ready){
+    $("help-log").innerHTML =
+      `<div class="gate">The moderator's model is not configured yet.<br><br>`
+      + `<a href="/setapi" target="_blank">Please set api first ↗</a></div>`;
+    $("help-note").textContent = "slot 0 in api.json, or slot 1 if 0 is blank";
+    return;
+  }
+  if(!HELP.readme){
+    try{
+      const r = await fetch("/readme");
+      if(!r.ok) throw new Error("HTTP " + r.status);
+      HELP.readme = await r.text();
+    }catch(e){
+      $("help-log").innerHTML = `<div class="hm sys">Could not load README.md — ${esc(e.message)}.`
+        + ` It should sit in the same folder as app.py.</div>`;
+      return;
+    }
+  }
+  $("help-note").textContent = `answers come from README.md (${(HELP.readme.length/1000).toFixed(0)}k chars), nothing else`;
+  if(!HELP.msgs.length) renderHelp();
+  $("help-q").focus();
+}
+
+function renderHelp(){
+  const log = $("help-log");
+  log.innerHTML = (HELP.msgs.length ? "" :
+    `<div class="intro">Ask about anything in this tool and the moderator's model will answer
+      from <b>README.md</b> — what <code>[ASSUMED]</code> means and when it fires, what onboarding
+      actually does, why a mechanical check flagged a turn, where a tool's conditions end up.
+      <br><br>It answers from the README and nothing else, and it will say so when the README
+      does not cover something. To read the file yourself, use the button below.</div>`)
+    + HELP.msgs.map(m =>
+        m.role === "user" ? `<div class="hm you"><b>›</b>${esc(m.text)}</div>`
+      : m.role === "sys"  ? `<div class="hm sys">${esc(m.text)}</div>`
+      :                     `<div class="hm ai">${esc(m.text)}</div>`).join("")
+    + (HELP.busy ? `<div class="hm thinking">reading…</div>` : "");
+  log.scrollTop = log.scrollHeight;
+}
+
+function helpMessages(){
+  return [{role: "system", content:
+`You are the built-in help for a local tool called the Environmental Agent Roundtable. Its whole
+documentation is below. Answer the user's question from it.
+
+Rules:
+- **Answer from the README and nothing else.** If it does not cover the question, say plainly that
+  the README does not say, and — where you can — name the section that comes closest. Do not fill
+  the gap from general knowledge about LLM tools; a confident wrong answer about a tool someone is
+  operating is worse than "it does not say".
+- Name the section heading you are drawing on, so the reader can find it in the raw file.
+- Be brief. Two or three sentences usually. This is a help box, not a manual.
+- The reader is looking at the tool right now, so speak about what they can see: buttons, panels,
+  the seat cards, the bottom bar.
+
+<<<README BEGIN>>>
+${HELP.readme}
+<<<README END>>>`}]
+    .concat(HELP.msgs.filter(m => m.role !== "sys")
+      .map(m => ({role: m.role === "user" ? "user" : "assistant", content: m.text})));
+}
+
+async function askHelp(){
+  const q = $("help-q").value.trim();
+  if(!q || HELP.busy) return;
+  $("help-q").value = "";
+  HELP.msgs.push({role: "user", text: q});
+  HELP.busy = true; $("help-send").disabled = true; $("help-stop").disabled = false;
+  renderHelp();
+  try{
+    const text = await call(modCfg(), helpMessages(), HELP_TOK, HELP);
+    HELP.msgs.push({role: "assistant", text: text.trim()});
+  }catch(e){
+    if(e.name !== "AbortError") HELP.msgs.push({role: "sys", text: e.message});
+  }finally{
+    HELP.busy = false; $("help-send").disabled = false; $("help-stop").disabled = true;
+    renderHelp();
+  }
+}
+
+$("lnk-readme").onclick = e => { e.preventDefault(); openReadme(); };
+$("help-send").onclick = askHelp;
+$("help-stop").onclick = () => { if(HELP.abort) HELP.abort.abort(); };
+$("help-q").addEventListener("keydown", e => { if(e.key === "Enter") askHelp(); });
+$("readme-close").onclick = () => $("readme-ov").classList.remove("on");
+$("readme-raw").onclick = () => window.open("/readme", "_blank");
+$("readme-ov").addEventListener("click", e => {
+  if(e.target.id === "readme-ov") $("readme-ov").classList.remove("on");   // click outside
+});
+document.addEventListener("keydown", e => {
+  if(e.key === "Escape") $("readme-ov").classList.remove("on");
+});
+
+/* ══════════════════════════════════════════════
+   Start-up
+   ══════════════════════════════════════════════ */
+/* Chrome restores the open/closed state of <details> across a reload, so a section you opened
+   once stays open on every later visit — which looks exactly like "the fold does not work".
+   The markup is the intended state, so assert it. Bubbles created later are not affected. */
+document.querySelectorAll("details").forEach(d => { d.open = d.hasAttribute("open"); });
+
+loadCfg();
+setStatus();
+loadSlots();          // provider settings come from api.json, not from the cards
+loadRegistry();          // what is already in tools/, for every seat's tool picker
+
+// the Set API tab is a separate page; pick up its edits when you come back to this one
+window.addEventListener("focus", loadSlots);
+
+/* Backend reachable? Say so immediately rather than failing later mid-onboarding. */
+(async () => {
+  if(location.protocol === "file:"){
+    bubble("S", "Backend not reachable",
+      "You opened index.html as a file. The page has to be served by the backend: "
+      + "run `python app.py` and open http://127.0.0.1:8000 — otherwise every model "
+      + "call fails with \"Failed to fetch\".");
+    return;
+  }
+  try{
+    const r = await fetch("/health");
+    if(!r.ok) throw new Error("HTTP " + r.status);
+  }catch(e){
+    bubble("S", "Backend not reachable",
+      "The page loaded but /health does not answer. app.py may have exited — check the "
+      + "terminal you started it in. A system proxy that intercepts 127.0.0.1 does this too.");
+  }
+})();
+</script>
+</body>
+</html>

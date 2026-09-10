@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Transcript viewer — Environmental Agent Roundtable</title>
+<style id="docstyle">
+  /* Palette and message styling are lifted verbatim from index.html so that a
+     printed transcript looks like the running application, not like a re-design.
+     Nothing here talks to the app: this file only reads an exported .md.
+
+     Only the dialogue is rendered. The appendices — ledger, checks, adjudication,
+     profiles, tool cards, knowledge bases — are deliberately left out: they are
+     tables and whole papers, they belong in their own SI sections, and rendering
+     arbitrary Markdown is where a viewer like this goes wrong. */
+  :root{
+    --bg:#f6f6f4; --card:#fff; --line:#e2e0da; --ink:#22201c; --muted:#7a756c;
+    --mod:#b4590a; --mod-bg:#fff5e8;
+  }
+  .c1{--ac:#2f6fb5; --acbg:#f0f6fd}
+  .c2{--ac:#1e8a6e; --acbg:#eff9f5}
+  .c3{--ac:#7a4fb5; --acbg:#f5f1fc}
+  .c4{--ac:#1f7a94; --acbg:#eef8fb}
+  .c5{--ac:#a8443a; --acbg:#fdf1ef}
+  .c6{--ac:#6b7a1f; --acbg:#f6f8ea}
+  .c7{--ac:#a03b78; --acbg:#fdf0f8}
+  .c8{--ac:#41598f; --acbg:#f1f3fa}
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.65 -apple-system,"Segoe UI",system-ui,sans-serif;
+  }
+
+  .toolbar{
+    position:sticky; top:0; z-index:5; background:var(--card);
+    border-bottom:1px solid var(--line); padding:10px 18px;
+    display:flex; gap:16px; align-items:center; flex-wrap:wrap; font-size:13px;
+  }
+  .toolbar b{font-weight:650}
+  .toolbar label{color:var(--muted); display:flex; gap:5px; align-items:center; cursor:pointer}
+  .toolbar button{
+    font:inherit; font-size:13px; padding:4px 12px; cursor:pointer;
+    border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink);
+  }
+  .toolbar button:hover{border-color:var(--mod); color:var(--mod)}
+  .hint{color:var(--muted); font-size:12px}
+
+  .doc{
+    max-width:52em; margin:22px auto 90px; background:var(--card);
+    border:1px solid var(--line); border-radius:10px; padding:34px 40px;
+  }
+  .doc.empty-state{color:var(--muted); text-align:center; padding:70px 40px}
+
+  .dochead{border-bottom:1px solid var(--line); padding-bottom:16px; margin-bottom:22px}
+  .dochead h1{font-size:19px; margin:0 0 8px; font-weight:650; line-height:1.45}
+  .dochead .meta{color:var(--muted); font-size:12.5px; line-height:1.8}
+  .dochead .meta .seat{font-weight:600}
+  .legend{display:flex; gap:14px; flex-wrap:wrap; margin-top:12px; font-size:11.5px; color:var(--muted)}
+
+  .msg{margin:0 0 14px; padding:10px 14px; border-left:3px solid; border-radius:0 8px 8px 0}
+  .msg .who{font-size:12px; font-weight:650; margin-bottom:4px}
+  .msg .body{white-space:pre-wrap; word-break:break-word}
+  .msg.s{border-color:var(--ac); background:var(--acbg)}
+  .msg.s .who{color:var(--ac)}
+  .msg.M{
+    border:2px solid var(--mod); background:var(--mod-bg); border-radius:8px;
+    box-shadow:0 1px 6px rgba(180,89,10,.14); padding:12px 16px; margin:18px 0;
+  }
+  .msg.M .who{color:var(--mod); font-size:13px; letter-spacing:.04em}
+  .msg.M .body{font-weight:500}
+  .msg.Q{
+    border-left:2px dotted var(--muted); background:transparent; color:var(--muted);
+    font-size:12.5px; padding:2px 12px; margin-bottom:10px;
+  }
+  .msg.Q .head{font-size:12.5px; margin-bottom:2px}
+  .msg.Q.tool{border-left-color:#2f4fa8; color:#41507d}
+  .msg.Q pre{
+    white-space:pre-wrap; font-size:11.5px; line-height:1.5; background:#faf9f7;
+    border:1px solid var(--line); border-radius:6px; padding:8px; margin:6px 0 0;
+  }
+  .tag{
+    display:inline-block; font-size:10.5px; padding:0 5px; border-radius:4px; font-weight:600;
+    border:1px solid currentColor; margin-right:3px; vertical-align:1px; letter-spacing:.03em;
+  }
+  .tag.base{color:#2c6e49; background:#e8f4ee}
+  .tag.ext{color:#8a5a00; background:#fbf1de}
+  .tag.comp{color:#2f4fa8; background:#eaeefb}
+  .tag.assm{color:#8f3a6b; background:#f9ecf4}
+  .tag .rid{opacity:.72; font-weight:500}
+
+  @media print{
+    @page{ margin:14mm }
+    html,body{background:#fff}
+    .toolbar{display:none !important}
+    .doc{max-width:none; margin:0; padding:0; border:none; border-radius:0; background:#fff}
+    /* Without this every tint — bubble backgrounds, tag colours — is dropped by the
+       print engine and the four tags become indistinguishable. */
+    *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important }
+    .msg .who{break-after:avoid}
+    .msg.Q, .msg.M{break-inside:avoid}
+    h1{break-after:avoid}
+  }
+</style>
+
+<div class="toolbar">
+  <b>Transcript viewer</b>
+  <input type="file" id="file" accept=".md,.markdown,.txt">
+  <label><input type="checkbox" id="opt-detail" checked> tool &amp; lookup lines</label>
+  <label><input type="checkbox" id="opt-legend" checked> tag legend</label>
+  <button id="print">Print / Save as PDF</button>
+  <button id="svg">Export SVG</button>
+  <span class="hint">reads an exported <code>.md</code> — nothing is uploaded anywhere</span>
+</div>
+
+<div class="doc empty-state" id="doc">
+  Pick an exported dialogue <code>.md</code>, or drop one anywhere on this page.
+</div>
+
+<script>
+"use strict";
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* The four-tag highlighting, character for character as index.html does it, so a
+   printed page and a live page mark the same spans the same way. */
+function tags(escaped){
+  return escaped
+    .replace(/\[GROUNDED\]/gi,     '<span class="tag base">GROUNDED</span>')
+    .replace(/\[EXTRAPOLATED\]/gi, '<span class="tag ext">EXTENDED</span>')
+    .replace(/\[EXTENDED\]/gi,     '<span class="tag ext">EXTENDED</span>')
+    .replace(/\[ASSUMED\]/gi,      '<span class="tag assm">ASSUMED</span>')
+    .replace(/\[COMPUTED(\s+from\s+)(R\d+(?:\s*[,–-]\s*R?\d+)*)\]/gi,
+             (m, _f, ids) => `<span class="tag comp">COMPUTED <span class="rid">${ids.replace(/\s+/g,"")}</span></span>`)
+    .replace(/\[COMPUTED\]/gi,     '<span class="tag comp">COMPUTED</span>');
+}
+const body = t => tags(esc(t));
+
+/* ══════════════════════════════════════════════
+   Parsing an export
+
+   This is deliberately NOT index.html's parseTranscript(): that one throws the
+   tool's returned output away, because the app only needs to know a run happened.
+   For a printed record the returned numbers are the point, so the blockquoted
+   code fence that follows a tool line is captured here.
+
+   Everything from the rule before the first "## Appendix" onward is discarded.
+   ══════════════════════════════════════════════ */
+function parseExport(md){
+  const out = {topic:"", date:"", rounds:"", people:[], items:[]};
+
+  const cut  = md.search(/\n-{3,}\s*\n+(?=##\s*Appendix)/);
+  const head = cut >= 0 ? md.slice(0, cut) : md;
+
+  let m;
+  if((m = head.match(/^#\s*Dialogue:\s*(.+)$/m)))         out.topic  = m[1].trim();
+  if((m = head.match(/^-\s*Date:\s*(.+)$/m)))             out.date   = m[1].trim();
+  if((m = head.match(/^-\s*Rounds completed:\s*(.+)$/m))) out.rounds = m[1].trim();
+  for(const p of head.matchAll(/^-\s*Scientist\s*\d*\s*[A-Z]?:\s*(.+?)\s*\((.*?)\)\s*·\s*(.+?)\s*$/gm))
+    out.people.push({name:p[1].trim(), field:p[2].trim(), model:p[3].trim()});
+
+  // Everything after the header's own rule is dialogue.
+  const lines = head.split(/\n-{3,}\s*\n/).slice(1).join("\n---\n").split("\n");
+
+  let cur = null;
+  const flush = () => {
+    if(cur && cur.text.join("\n").trim())
+      out.items.push({kind:"turn", who:cur.who, text:cur.text.join("\n").trim()});
+    cur = null;
+  };
+
+  for(let i = 0; i < lines.length; i++){
+    const ln = lines[i];
+
+    const h = ln.match(/^###\s+(.+?)\s*$/);
+    if(h){ flush(); cur = {who:h[1].trim(), text:[]}; continue; }
+
+    const lk = ln.match(/^>\s*🔍\s*(.+?)\s+looked up:\s*(.+?)\s*$/);
+    if(lk){ flush(); out.items.push({kind:"lookup", who:lk[1].trim(), query:lk[2].trim()}); continue; }
+
+    const tl = ln.match(/^>\s*⚙\s*(?:\*\*(R\d+)\*\*\s*·\s*)?(.+?)\s+ran the tool:\s*(.+?)\s*$/);
+    if(tl){
+      flush();
+      // The output arrives as a blockquoted fence a blank line later:
+      //   > ```
+      //   > { … }
+      //   > ```
+      let j = i + 1, outp = null;
+      while(j < lines.length && /^>?\s*$/.test(lines[j])) j++;
+      if(j < lines.length && /^>\s*```/.test(lines[j])){
+        const buf = [];
+        j++;
+        while(j < lines.length && !/^>\s*```/.test(lines[j])) buf.push(lines[j++].replace(/^>\s?/, ""));
+        outp = buf.join("\n").replace(/\s+$/, "");
+        i = j;                       // consume the fence
+      }
+      out.items.push({kind:"tool", rid:tl[1] || null, who:tl[2].trim(),
+                      call:tl[3].trim(), out:outp});
+      continue;
+    }
+
+    if(cur) cur.text.push(ln);
+  }
+  flush();
+  return out;
+}
+
+/* ══════════════════════════════════════════════
+   Rendering
+
+   Markup is kept XML-well-formed (<br/>, no bare attributes, no <details>) so the
+   same nodes can be dropped straight into an SVG <foreignObject> below.
+   ══════════════════════════════════════════════ */
+let DOC = null;
+
+function draw(){
+  if(!DOC) return;
+  const showDetail = $("opt-detail").checked;
+  const showLegend = $("opt-legend").checked;
+
+  const colorOf = {};
+  DOC.people.forEach((p, i) => colorOf[p.name] = "c" + ((i % 8) + 1));
+
+  const H = [];
+  H.push(`<div class="dochead"><h1>${esc(DOC.topic)}</h1><div class="meta">`);
+  if(DOC.date)   H.push(`${esc(DOC.date)}`);
+  if(DOC.rounds) H.push(` · ${esc(DOC.rounds)} rounds`);
+  for(const p of DOC.people)
+    H.push(`<br/><span class="seat">${esc(p.name)}</span> — ${esc(p.field)} · ${esc(p.model)}`);
+  H.push(`</div>`);
+  if(showLegend) H.push(
+    `<div class="legend">`
+    + `<span><span class="tag base">GROUNDED</span> in the knowledge base</span>`
+    + `<span><span class="tag comp">COMPUTED</span> returned by a tool run</span>`
+    + `<span><span class="tag ext">EXTENDED</span> beyond what the source establishes</span>`
+    + `<span><span class="tag assm">ASSUMED</span> rests on a value nobody established</span>`
+    + `</div>`);
+  H.push(`</div>`);
+
+  for(const it of DOC.items){
+    if(it.kind === "turn"){
+      const cls = it.who === "MODERATOR" ? "M" : "s " + (colorOf[it.who] || "c1");
+      H.push(`<div class="msg ${cls}"><div class="who">${esc(it.who)}</div>`
+           + `<div class="body">${body(it.text)}</div></div>`);
+    }
+    else if(it.kind === "lookup"){
+      if(!showDetail) continue;
+      H.push(`<div class="msg Q"><div class="head">🔍 ${esc(it.who)} looked up: `
+           + `${esc(it.query)}</div></div>`);
+    }
+    else if(it.kind === "tool"){
+      if(!showDetail) continue;
+      H.push(`<div class="msg Q tool"><div class="head">⚙ `
+           + (it.rid ? `<b>${esc(it.rid)}</b> · ` : "")
+           + `${esc(it.who)} ran the tool: ${esc(it.call)}</div>`
+           + (it.out ? `<pre>${esc(it.out)}</pre>` : "")
+           + `</div>`);
+    }
+  }
+
+  const d = $("doc");
+  d.className = "doc";
+  d.innerHTML = H.join("\n");
+  document.title = DOC.topic ? DOC.topic.slice(0, 60) : "Transcript";
+}
+
+/* ══════════════════════════════════════════════
+   SVG export
+
+   The page is wrapped in a <foreignObject> with a copy of the stylesheet, so the
+   result is one resolution-independent file that keeps every glyph as text rather
+   than pixels. Browsers, Figma and Sketch render it. Illustrator and Inkscape do
+   NOT implement foreignObject — for editing there, open the printed PDF instead,
+   which is equally vector and arrives with live text.
+   ══════════════════════════════════════════════ */
+function exportSVG(){
+  if(!DOC) return alert("Load a transcript first.");
+  const node = $("doc");
+  const w = Math.ceil(node.getBoundingClientRect().width);
+  const h = Math.ceil(node.getBoundingClientRect().height);
+  const css = $("docstyle").textContent.replace(/@media print\{[\s\S]*?\n  \}/, "");
+
+  const svg =
+`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+<style>${css}</style>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<foreignObject x="0" y="0" width="${w}" height="${h}">
+<div xmlns="http://www.w3.org/1999/xhtml" class="doc" style="margin:0; width:${w}px; border:none; border-radius:0">
+${node.innerHTML}
+</div>
+</foreignObject>
+</svg>`;
+
+  const name = (DOC.topic || "dialogue").slice(0, 40).replace(/[^\w -]/g, "").trim() || "dialogue";
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([svg], {type:"image/svg+xml;charset=utf-8"}));
+  a.download = name + ".svg";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function load(file){
+  const r = new FileReader();
+  r.onload = () => { DOC = parseExport(r.result); draw(); window.scrollTo(0, 0); };
+  r.readAsText(file);
+}
+
+$("file").addEventListener("change", e => { if(e.target.files[0]) load(e.target.files[0]); });
+for(const id of ["opt-detail","opt-legend"]) $(id).addEventListener("change", draw);
+$("print").addEventListener("click", () => window.print());
+$("svg").addEventListener("click", exportSVG);
+
+document.addEventListener("dragover", e => e.preventDefault());
+document.addEventListener("drop", e => {
+  e.preventDefault();
+  const f = e.dataTransfer.files[0];
+  if(f) load(f);
+});
+</script>
+</html>

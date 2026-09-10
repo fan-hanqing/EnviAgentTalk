@@ -1,0 +1,32 @@
+[
+  {
+    "label": "Moderator's assistant",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "model": "qwen3.8-max",
+    "api_key": "sk-ws-H.EPIDDXD.Ejrs.MEYCIQDdJfkce25jem5fSHwVAwbAbceXFIc_UXkWBAtJkWoEGAIhAPVHZ-6F1j8iwjH_5wlPD96bEBK1VLvz0mn__ts8I_rv"
+  },
+  {
+    "label": "Scientist 1",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "model": "qwen3.8-max",
+    "api_key": "sk-ws-H.EEYIDYX.oEvR.MEUCIFo3AK3CLW8DFq_GHd1CmHQnzBYDyOuOhX6K0qBB8xoiAiEA8P_4sRQvaXvs8FX3ZQRJjZtzpxYQNTzpAyWNaZQTiBw"
+  },
+  {
+    "label": "Scientist 2",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "model": "qwen3.8-max",
+    "api_key": "sk-ws-H.EEYIDXP.ImKT.MEYCIQCVwVjkZ-1-eXXGxCI3bdmIclfDe4MJZWadskm1OGJ8xQIhAKY9gH03fugcpPJ74KhHwlzZlGfE57oxLV6L7r1rjEa_"
+  },
+  {
+    "label": "Scientist 3",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "model": "qwen3.8-max",
+    "api_key": "sk-ws-H.EPIDDEX.g89c.MEYCIQD12pWRRBlJCC2Ko06pj8JEOsR4qwPihTJiNEaMtzAaxAIhAKhi1a0QGo0A2d3-bhX7KRx1Y1ow8gUoBHLfq0FTYl_m"
+  },
+  {
+    "label": "Scientist 4",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "model": "qwen3.8-max",
+    "api_key": "sk-ws-H.EPIDDYL.wHFq.MEUCIQD0sKZqScuQz8Dw_RJd-ixAx-UiFdY0N5STAv8DDuYBGAIgBtdKIGgMXJFCnesoMbCKw_s2MhwwhMlQ9e9Xn8Qe8Qo"
+  }
+]

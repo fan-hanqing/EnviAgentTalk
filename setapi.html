@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Set API</title>
+<style>
+  :root{
+    --bg:#f6f6f4; --card:#fff; --line:#e2e0da; --ink:#22201c; --muted:#7a756c;
+    --acc:#2f6fb5; --acc-bg:#f0f6fd;
+    --warn:#b4590a; --warn-bg:#fff5e8;
+    --bad:#9a3232; --bad-bg:#fdf0f0;
+    --ok:#1e8a6e; --ok-bg:#eff9f5;
+    --mono:ui-monospace,"SF Mono",Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:14px/1.6 -apple-system,"Segoe UI",system-ui,sans-serif;
+  }
+  h1{font-size:17px; margin:0; font-weight:650}
+  a{color:var(--ink)}
+  code{font-family:var(--mono); font-size:.92em}
+
+  .top{
+    display:flex; align-items:baseline; gap:14px; padding:12px 18px;
+    border-bottom:1px solid var(--line); background:var(--card);
+  }
+  .top .sp{flex:1}
+  .top .sub{font-size:12.5px; color:var(--muted)}
+
+  .wrap{max-width:960px; margin:0 auto; padding:18px}
+  .note{font-size:12px; color:var(--muted); line-height:1.6}
+
+  .cap{
+    border:1px solid var(--line); background:var(--card); border-radius:8px;
+    padding:11px 14px; margin-bottom:16px; font-size:13px;
+  }
+  .cap b{font-weight:650}
+  .cap.short{border-color:#e3cfae; background:var(--warn-bg); color:#7a5117}
+
+  .slot{
+    border:1px solid var(--line); background:var(--card); border-radius:8px;
+    padding:12px 14px; margin-bottom:10px;
+  }
+  .slot.mod{border-left:3px solid var(--warn)}
+  .slot.sci{border-left:3px solid var(--acc)}
+  .hd{display:flex; align-items:baseline; gap:10px; margin-bottom:8px}
+  .idx{
+    font-family:var(--mono); font-size:12px; font-weight:700; color:#fff;
+    background:var(--ink); border-radius:4px; padding:1px 7px;
+  }
+  .slot.mod .idx{background:var(--warn)}
+  .slot.sci .idx{background:var(--acc)}
+  .who{font-size:12px; color:var(--muted)}
+  .hd .sp{flex:1}
+  .hd button{border:none; background:none; color:var(--muted); cursor:pointer; font-size:13px}
+  .hd button:hover{color:var(--bad)}
+
+  .grid{display:grid; grid-template-columns:1.1fr 1fr; gap:9px}
+  .grid .full{grid-column:1 / -1}
+  label{display:block; font-size:11px; color:var(--muted); margin-bottom:2px}
+  input{
+    width:100%; padding:6px 9px; border:1px solid var(--line); border-radius:5px;
+    background:#fdfdfc; font:13px/1.5 var(--mono); color:var(--ink);
+  }
+  input:focus{outline:2px solid #c9d8ea; outline-offset:-1px}
+  input.lab{font-family:inherit}
+  .keyrow{display:flex; gap:6px}
+  .keyrow button{
+    flex:none; padding:0 9px; border:1px solid var(--line); border-radius:5px;
+    background:#fff; font-size:11.5px; cursor:pointer; color:var(--muted);
+  }
+  .keyrow button:hover{background:#f2f1ee}
+
+  .bar{display:flex; gap:8px; align-items:center; margin-top:14px}
+  .bar .sp{flex:1}
+  button.b{
+    padding:7px 14px; border:1px solid var(--line); border-radius:5px; background:#fff;
+    font:inherit; font-size:13px; cursor:pointer;
+  }
+  button.b:hover:not(:disabled){background:#f2f1ee}
+  button.b.primary{background:var(--ink); color:#fff; border-color:var(--ink)}
+  button.b.primary:hover:not(:disabled){background:#3a352e}
+  #msg{font-size:12.5px}
+  #msg.ok{color:var(--ok)} #msg.bad{color:var(--bad)}
+
+  .warn{
+    border:1px solid #e3cfae; background:var(--warn-bg); border-radius:8px;
+    padding:10px 13px; margin-top:18px; font-size:12px; color:#7a5117; line-height:1.6;
+  }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>Set API</h1>
+  <span class="sub">one file, one slot per seat · <code id="path">api.json</code></span>
+  <span class="sp"></span>
+  <a href="/">← the roundtable</a>
+</div>
+
+<div class="wrap">
+  <div class="cap" id="cap"></div>
+  <div id="slots"></div>
+
+  <div class="bar">
+    <button class="b" id="btn-add">+ Add a scientist slot</button>
+    <span class="sp"></span>
+    <span id="msg"></span>
+    <button class="b" id="btn-reload">Reload from file</button>
+    <button class="b primary" id="btn-save">Save</button>
+  </div>
+
+  <div class="warn">
+    <b>The index is the identity.</b> Slot 0 is the moderator's assistant; slot 1 is whoever sits
+    in the first seat, slot 2 the second, and so on. The binding is by <em>position</em>, not by
+    name — remove a seat at the roundtable and everyone below it moves up a slot, and starts using
+    a different key. Each seat's card shows which slot it is using, so you can see it happen.
+    <br><br>
+    Slot 0 may be left blank: the moderator's assistant then borrows slot 1. Giving it a small,
+    fast model of its own is usually cheaper, since it writes a summary after every round.
+    <br><br>
+    <b>This file holds your keys in plain text.</b> That is fine for a local tool — the server
+    only listens on 127.0.0.1 and never serves the file as a static asset — but it is in
+    <code>.gitignore</code> for a reason. Do not commit it, and do not put it anywhere a backup
+    will sweep it up.
+  </div>
+</div>
+
+<script>
+"use strict";
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let SLOTS = [];
+
+function render(){
+  $("slots").innerHTML = SLOTS.map((s, i) => `
+    <div class="slot ${i === 0 ? "mod" : "sci"}" data-i="${i}">
+      <div class="hd">
+        <span class="idx">${i}</span>
+        <span class="who">${i === 0 ? "the moderator's assistant — never takes a turn"
+                                    : "whoever sits in seat " + i}</span>
+        <span class="sp"></span>
+        ${i === 0 ? "" : `<button data-del="${i}" title="remove this slot">✕</button>`}
+      </div>
+      <div class="grid">
+        <div class="full"><label>label</label>
+          <input class="lab" data-f="label" value="${esc(s.label)}"></div>
+        <div class="full"><label>base_url (OpenAI-compatible)</label>
+          <input data-f="base_url" value="${esc(s.base_url)}"
+                 placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1"></div>
+        <div><label>model</label>
+          <input data-f="model" value="${esc(s.model)}" placeholder="qwen-plus"></div>
+        <div><label>api_key</label>
+          <div class="keyrow">
+            <input data-f="api_key" type="password" value="${esc(s.api_key)}" placeholder="sk-…">
+            <button data-eye="${i}">show</button>
+          </div></div>
+      </div>
+    </div>`).join("");
+
+  $("slots").querySelectorAll("input").forEach(inp => inp.addEventListener("input", () => {
+    SLOTS[+inp.closest(".slot").dataset.i][inp.dataset.f] = inp.value;
+    if(inp.dataset.f !== "label") capacity();
+  }));
+  $("slots").querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => {
+    SLOTS.splice(+b.dataset.del, 1); render();
+  }));
+  $("slots").querySelectorAll("[data-eye]").forEach(b => b.addEventListener("click", () => {
+    const f = b.previousElementSibling;
+    const shown = f.type === "text";
+    f.type = shown ? "password" : "text";
+    b.textContent = shown ? "show" : "hide";
+  }));
+  capacity();
+}
+
+/* Slot 0 is the moderator, so the roundtable can seat one scientist fewer than there are slots.
+   A slot only counts if it can actually be called. */
+function usable(s){ return !!(s.base_url.trim() && s.model.trim()); }
+
+function capacity(){
+  const seats = SLOTS.slice(1).filter(usable).length;
+  const el = $("cap");
+  el.className = "cap" + (seats < 2 ? " short" : "");
+  el.innerHTML = seats >= 2
+    ? `<b>${SLOTS.length} slots</b> — the moderator's assistant plus room for <b>${seats}
+       scientist${seats === 1 ? "" : "s"}</b> at the roundtable.
+       ${usable(SLOTS[0]) ? "" : "Slot 0 is blank, so the assistant will borrow slot 1."}`
+    : `<b>Only ${seats} usable scientist slot${seats === 1 ? "" : "s"}.</b> A roundtable needs at
+       least two, so fill in a <code>base_url</code> and a <code>model</code> for slots 1 and 2 —
+       or add more below. A slot with either one missing does not count.`;
+}
+
+async function load(){
+  const d = await (await fetch("/api/slots")).json();
+  SLOTS = d.slots || [];
+  $("path").textContent = (d.file || "api.json").split(/[\\/]/).slice(-1)[0];
+  $("path").title = d.file || "";
+  if(!SLOTS.length) SLOTS = [{label: "Moderator's assistant", base_url: "", model: "", api_key: ""}];
+  render();
+  msg("");
+}
+
+function msg(t, cls){ $("msg").textContent = t; $("msg").className = cls || ""; }
+
+$("btn-add").onclick = () => {
+  const prev = SLOTS[SLOTS.length - 1] || {};
+  SLOTS.push({label: "Scientist " + SLOTS.length,
+              base_url: prev.base_url || "", model: prev.model || "", api_key: prev.api_key || ""});
+  render();
+  window.scrollTo({top: document.body.scrollHeight, behavior: "smooth"});
+};
+$("btn-reload").onclick = load;
+$("btn-save").onclick = async () => {
+  msg("saving…");
+  const r = await fetch("/api/slots", {
+    method: "PUT", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({slots: SLOTS}),
+  });
+  const d = await r.json();
+  if(!d.ok) return msg("save failed", "bad");
+  SLOTS = d.slots; render();
+  const seats = SLOTS.slice(1).filter(usable).length;
+  msg(`saved — ${SLOTS.length} slots, room for ${seats} scientist${seats === 1 ? "" : "s"}`, "ok");
+};
+
+load();
+</script>
+</body>
+</html>
