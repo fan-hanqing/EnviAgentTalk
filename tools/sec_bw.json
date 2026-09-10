@@ -1,0 +1,59 @@
+{
+  "name": "sec_bw",
+  "title": "Specific energy consumption of brackish water desalination, RO vs ED",
+  "description": "Electrical specific energy consumption (kWh per cubic metre of product water) of reverse osmosis and electrodialysis over the brackish range 1000-10000 ppm, from the process- and cost-optimisation model of the source paper. The two technologies cross at about 2060 ppm, so the technology argument changes the answer by up to a factor of two and has no default.",
+  "runtime": "python",
+  "parameters": [
+    {
+      "key": "feed_ppm",
+      "type": "number",
+      "unit": "ppm TDS",
+      "required": true,
+      "resolution": "feed total dissolved solids as a single NaCl-equivalent number; the source models a binary salt solution and carries no ionic composition, so it cannot distinguish soft NaCl groundwater from hard, sulphate-rich groundwater of the same TDS, although ED energy in particular depends on which ions are moved",
+      "description": "NO DEFAULT. Salinity of the feedwater. Must be 1000-10000 ppm; the tool refuses outside rather than extrapolating. The source states these salinities in g/L and they were converted at 1 g/L = 1000 ppm; see conditions."
+    },
+    {
+      "key": "technology",
+      "type": "string",
+      "unit": "-",
+      "required": true,
+      "resolution": "technology class, at the source's 'current state-of-the-art' cost and performance assumptions (ion-exchange membranes 100 USD/m2 for ED, RO membranes 30 USD/m2); not a specific plant or vendor",
+      "description": "NO DEFAULT, and a default would be wrong here: the RO and ED curves cross at about 2060 ppm, so below that ED uses roughly a quarter of RO's energy and at 10000 ppm it uses nearly twice as much. RO nonetheless holds over 80% of installed brackish desalination capacity, so it is the realistic choice for an existing plant; ED is the alternative under active consideration. One of \"RO\" or \"ED\" (case-insensitive)."
+    }
+  ],
+  "returns": {
+    "sec_kwh_per_m3": {
+      "type": "number",
+      "unit": "kWh/m3",
+      "resolution": "whole-process electrical energy for the modelled system at its cost-optimal productivity, per cubic metre of PRODUCT water (not feed); a technology-class figure, not a plant measurement"
+    }
+  },
+  "conditions": "Brackish water only, 1000-10000 ppm feed TDS (the source's 1-10 g/L), and the tool refuses outside that range. THREE OPERATING VARIABLES ARE FIXED AND ARE NOT PARAMETERS: product water salinity 0.5 g/L (500 ppm), water recovery 80%, and productivity set to the value that MINIMISES THE LEVELISED COST OF WATER at each feed salinity -- cost-optimal, not energy-optimal, so this is not the lowest energy the technology could reach. Because the product spec is fixed at 500 ppm, the energy scales with the salt actually removed, which is why ED at 1000 ppm is so small: only 500 ppm of salt is being moved. Changing the product specification invalidates every number here. For RO an energy recovery device is applied at every feed salinity EXCEPT 1000 ppm, so the RO curve has a discontinuity in its assumptions at its own left endpoint. THESE ARE PROCESS-MODEL OUTPUTS, NOT OPERATING PLANTS. Real plants are not sized at cost-optimal productivity and do not achieve modelled performance, so treat these as a lower bound on what an actual installation consumes. COMPARED WITH PUBLISHED PRACTICE THESE NUMBERS RUN LOW. An empirical trend fitted to the 16 electrodialysis entries of Table S1 of Shah et al., Desalination 538 (2022) 115827 -- real and laboratory studies rather than a model -- agrees with the ED curve here to within 3% at 10000 ppm, but is 5 times higher at 1000 ppm and 25-80% higher over 2000-5000 ppm, the range in which inland brackish groundwater usually sits. That is the gap between a modelled optimum and what has actually been reported, and it must be carried alongside any number taken from here. The five feed salinities 1000, 3000, 5000, 7000 and 10000 ppm are the only ones the source computed; everything between them is linear interpolation performed by this tool. Values were read off a printed figure: the vertical axis resolves to 0.0094 kWh/m3 per pixel, so roughly +/-0.02 kWh/m3, which is negligible except at the ED 1000 ppm point where it is about +/-22%. The source's third curve, 'optimized ED', assumes ion-exchange membranes fall to 30 USD/m2 with improved charge density and diffusion coefficient; it is a hypothetical future case and is deliberately not served by this tool. Concentrate disposal, pretreatment and inland brine handling are outside the modelled boundary. THE SOURCE STATES SALINITY IN g/L AND THIS TOOL TAKES ppm: the conversion 1 g/L = 1000 ppm assumes a solution density of 1 kg/L. Over this range the true density reaches about 1.007 kg/L, so ppm is understated by at most 0.7% -- negligible against the digitisation error, but an assumption rather than an identity.",
+  "provenance": {
+    "class": "digitised",
+    "citation": "Patel, Lee, Westerhoff & Elimelech, 'The potential of electrodialysis as a cost-effective alternative to reverse osmosis for brackish water desalination', Water Research 250 (2024) 121009 -- Fig. 3 (SEC ED and SEC RO overlay lines, right-hand axis); operating conditions from the Fig. 3 caption; the qualitative crossover is stated in Section 3.2 of the text.",
+    "derivation": "The five (salinity, SEC) pairs per technology were digitised from the printed figure. The figure's x axis is categorical with evenly spaced bars, so digitiser x output was discarded and the known category values 1, 3, 5, 7, 10 g/L substituted (and converted to ppm); the y calibration is independent and was verified exact against the axis pixels. THE INTERPOLATION BETWEEN THE FIVE POINTS IS OURS, NOT THE SOURCE'S, as is the 2060 ppm crossover value -- the paper states that a crossover exists between 1 and 3 g/L but does not locate it."
+  },
+  "examples": [
+    {
+      "args": {
+        "feed_ppm": 5000,
+        "technology": "RO"
+      },
+      "result": {
+        "sec_kwh_per_m3": 0.7806
+      },
+      "note": "a digitised node, returned exactly; 5000 ppm is one of the five salinities the source actually computed"
+    },
+    {
+      "args": {
+        "feed_ppm": 2000,
+        "technology": "ED"
+      },
+      "result": {
+        "sec_kwh_per_m3": 0.4232
+      },
+      "note": "interpolated, and close to the crossover: RO at the same salinity returns 0.4373, so at 2000 ppm the technology choice is worth about 3% and either answer is within the digitisation and interpolation error"
+    }
+  ]
+}

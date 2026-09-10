@@ -1,0 +1,56 @@
+{
+  "name": "drought_ef",
+  "title": "Carbon intensity of drought-induced fossil generation, by western US state, 2021",
+  "description": "For one western US state in 2021, returns how much fossil generation drought called up and how much CO2 each kWh of it carried. Both come from the unit-month drought-attribution table of Qiu et al.'s replication repository; the ratio between them is computed here and is not a quantity the source paper reports.",
+  "runtime": "python",
+  "parameters": [
+    {
+      "key": "state",
+      "type": "string",
+      "unit": "-",
+      "required": true,
+      "resolution": "US state postal code, and it is the state where the GENERATING UNIT sits, not where the drought occurred. The source finds that over half of drought-induced generation is transboundary -- 63% of California's increase is caused by drought in neighbouring regions -- so this is the location of the emissions, not of the shortage.",
+      "description": "NO DEFAULT. One of AZ, CA, CO, ID, NV, OR, UT, WA, WY. MT, SD and TX are present in the underlying table but are refused for having fewer than three plants in the sample; NM is refused because its 2021 drought response cancelled out. Anything outside the Western Interconnection is refused."
+    }
+  ],
+  "returns": {
+    "ef_kg_co2_per_kwh": {
+      "type": "number",
+      "unit": "kg CO2/kWh",
+      "resolution": "state aggregate for calendar 2021, combustion CO2 only, over the fossil units that respond to runoff anomalies; a weighted mean of those units' own observed emission rates, weighted by how strongly each responds"
+    },
+    "drought_generation_MWh": {
+      "type": "number",
+      "unit": "MWh",
+      "resolution": "state aggregate for calendar 2021; the fossil generation attributable to runoff anomalies in all three electricity regions, summed over unit-months"
+    }
+  },
+  "conditions": "WESTERN INTERCONNECTION ONLY (the source's CA, NW and SW regions), CALENDAR 2021 ONLY, and the tool refuses outside both. 2021 was a severe western drought year, which is why it was chosen: in wet years the attributed generation is negative and no intensity exists. THE YEAR IS NOT INTERCHANGEABLE -- recomputing the same quantity for 2001 gives 0.69 in AZ against 0.43 in 2021, a 25-43% decline across states over two decades as the fossil fleet turned over, so a number from here is about the 2021 grid and no other. COMBUSTION CO2 ONLY. Upstream methane is omitted by choice, although the source's data would support it, because including it forces a 20-vs-100-year GWP decision; PM2.5 mortality cannot be computed at all, because the step from concentration to deaths is not in the source's public code. Any total built on this is therefore a LOWER BOUND, and gas-heavy fleets understate most. THE RATIO IS OUR DERIVATION. Qiu et al. report drought-induced generation and drought-induced emissions; they do not divide one by the other, and no emission factor appears in that paper. The division is dimensionally sound and uses only their own outputs, but it is ours. THE INTENSITY IS AN ATTRIBUTION, NOT A PREDICTION FOR NEW LOAD. It answers 'the fossil generation that drought called up carried this much CO2 per kWh'. Using it for a new drought-driven load -- desalination, for instance -- assumes that load is served in the same proportion as the fleet already responds to drought, which is a stateable assumption and is not something the source tested. The source did test whether drought raises electricity DEMAND and found no empirical relationship, in a period when inland desalination was negligible; that is a null for a channel that did not then exist, not a refutation of one that might. NO UNCERTAINTY INTERVAL. The source's regressions are bootstrapped 500 times, but its attribution script collapses those draws to their median before applying them, so the number here is a point estimate and no interval is propagated. TWO GUARDS ARE ENFORCED. A state whose drought-attributed generation is negative is refused, and a state whose computed intensity falls outside the range of its own units' observed emission rates is refused: the intensity is a weighted mean of those rates, so a coherent response must land between the cleanest and dirtiest unit, and landing outside means opposing responses dominated the sum. Both are physical tests, not tuned thresholds. States with fewer than three sampled plants are refused as too thin to be a grid margin. SAMPLE. EPA Air Markets units above 25 MW nameplate with at least four non-missing values in a month, 90% of fossil generation and 49% of total generation in the eleven western states; hydro, wind, solar and nuclear are not in it, so the fleet totals here are FOSSIL totals and must never be read as grid averages. Eleven of 681 units in the source carry pooled rather than BA-fuel coefficients because the BA-fuel estimates would have exceeded their total generation; two of those pairs are in Nevada and Washington.",
+  "provenance": {
+    "class": "derived",
+    "citation": "Qiu, M., et al., 'Drought impacts on the electricity system, emissions, and air quality in the western United States', PNAS 120 (2023) e2300395120.",
+    "data": "Data/intermediate/unit_drought_emis_historical.rds from the authors' replication repository https://github.com/mhqiu/drought-electricity-WUS (contact mhqiu@stanford.edu), sha256 96be7b5b6cd7a377d152b2a8d776f7a21588e90d07f69cf981e91fb661c73537, 108190 unit-months over 2001-2021. That file is itself produced by the repository's Scripts/analysis/2_historical_damages.R from Scripts/analysis/1_reg_runoff_generation.R.",
+    "derivation": "drought_ef_2021.csv is a pure aggregation of that file: for each state, sums of gen_total, co2_total and grossload_mw over calendar 2021, plus the min and max observed emission rate of its own units and the coherence of the response. No fitting, no assumption, no external data. running this tool as `drought_ef.py --rebuild <path to the .rds>` regenerates it, and drought_ef.build.md contains equivalent R so the authors can check it in their own environment. The short-ton to tonne factor 0.907184 is the source scripts' own us_to_metric_ton."
+  },
+  "examples": [
+    {
+      "args": {
+        "state": "AZ"
+      },
+      "result": {
+        "ef_kg_co2_per_kwh": 0.4273,
+        "drought_generation_MWh": 1522879.0
+      },
+      "note": "Arizona: gas-weighted, and 0.427 sits inside its units' observed range 0.363-1.084 as a coherent weighted mean must"
+    },
+    {
+      "args": {
+        "state": "NM"
+      },
+      "result": {
+        "error": "NM had NEGATIVE drought-induced fossil generation in 2021 (-208482 MWh, response coherence 0.27)"
+      },
+      "note": "a refusal, and an informative one: New Mexico's units did not respond coherently to runoff in 2021, so no marginal intensity exists for it. The tool returns the reason rather than the ratio of two negative numbers, which would have been 1.12 and unphysical."
+    }
+  ]
+}
